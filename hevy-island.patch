@@ -1,0 +1,414 @@
+diff --git a/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
+new file mode 100644
+index 0000000..f3efede
+--- /dev/null
++++ b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
+@@ -0,0 +1,364 @@
++package dev.flexy.dynamicisland.island;
++
++import android.app.Notification;
++import android.content.Context;
++import android.graphics.drawable.Drawable;
++import android.graphics.drawable.Icon;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.Looper;
++import android.os.SystemClock;
++import android.service.notification.StatusBarNotification;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.Chronometer;
++import android.widget.FrameLayout;
++import android.widget.RemoteViews;
++import android.widget.TextView;
++import dev.flexy.dynamicisland.xposed.XLog;
++import java.util.List;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++/**
++ * Hevy workout -> Dynamic Island item.
++ *
++ * Czyta aktywne powiadomienie Hevy (com.hevy), które SystemUI i tak przekazuje do
++ * IslandController.onNotifications(), wiec nie trzeba hookowac Hevy ani dodawac go do scope.
++ *
++ * Dwa stany powiadomienia (na podstawie zrzutow ekranu):
++ *   seria:    tytul "Chest Fly (Machine)", tekst "Set 1/4 - 45 kg x 8 reps", akcja "Complete Set"
++ *   przerwa:  tytul "Chest Fly (Machine)", tekst "Next: Set 2 of 4 (67.5 kg x 8 reps)",
++ *             "Rest 2:28" + pasek postepu, akcje "Skip", "-15s", "+15s"
++ *
++ * Mapowanie na wyspe:
++ *   kapsula: ikona Hevy + "1/4" (seria) albo odliczanie przerwy (przerwa)
++ *   karta:   tytul, tekst, obrazek cwiczenia (large icon), pasek przerwy, do 3 przyciskow
++ */
++final class HevySource {
++    static final String HEVY_PACKAGE = "com.hevy";
++
++    // "Rest 2:28" -> 148 s
++    private static final Pattern REST = Pattern.compile("(?i)\\brest\\b\\D{0,4}(\\d{1,3}):(\\d{2})");
++    // "Set 1/4" albo "Set 2 of 4"
++    private static final Pattern SET = Pattern.compile("(?i)\\bset\\s+(\\d+)\\s*(?:/|of)\\s*(\\d+)");
++    private static final long JITTER_MS = 2500;
++    private static final int MAX_ACTIONS = 3;
++
++    private final Context ctx;
++    private final Runnable onChanged;
++    private final Handler main = new Handler(Looper.getMainLooper());
++    private final Runnable tick = this::onTick;
++
++    private StatusBarNotification last;
++    private IslandItem current;
++    private String lastSig;
++
++    // Stan przerwy: wall-clock koniec i najwieksza zaobserwowana dlugosc (do paska).
++    private long restEnd = -1;
++    private long restTotal;
++
++    private String cachedTitle;
++    private Drawable cachedLarge;
++
++    HevySource(Context ctx, Runnable onChanged) {
++        this.ctx = ctx;
++        this.onChanged = onChanged;
++    }
++
++    void onNotifications(List<StatusBarNotification> all) {
++        StatusBarNotification found = null;
++        for (StatusBarNotification sbn : all) {
++            if (HEVY_PACKAGE.equals(sbn.getPackageName()) && isWorkout(sbn.getNotification())) {
++                found = sbn;
++                break;
++            }
++        }
++        if (found == null) {
++            reset();
++            return;
++        }
++        last = found;
++        try {
++            updateRest(restRemainingMs(found.getNotification()));
++            String sig = signature(found);
++            if (current == null || !sig.equals(lastSig)) {
++                current = build(found);
++                lastSig = sig;
++                onChanged.run();
++            }
++            scheduleTick();
++        } catch (Throwable t) {
++            XLog.e("hevy update failed", t);
++        }
++    }
++
++    void collect(List<IslandItem> out, String foregroundPackage) {
++        if (current == null || HEVY_PACKAGE.equals(foregroundPackage)) {
++            return; // Hevy na pierwszym planie: wyspa niepotrzebna
++        }
++        // Jesli Hevy jest juz pokazany przez OaSource (promoted ongoing), nie dubluj.
++        for (IslandItem it : out) {
++            if (HEVY_PACKAGE.equals(it.packageName)) {
++                return;
++            }
++        }
++        out.add(current);
++    }
++
++    private void reset() {
++        main.removeCallbacks(tick);
++        restEnd = -1;
++        restTotal = 0;
++        last = null;
++        lastSig = null;
++        cachedTitle = null;
++        cachedLarge = null;
++        if (current != null) {
++            current = null;
++            onChanged.run();
++        }
++    }
++
++    /** Powiadomienie treningu: ongoing/foreground albo tekst "Set x/y" / "Rest m:ss". */
++    private static boolean isWorkout(Notification n) {
++        if ((n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) {
++            return false;
++        }
++        if ((n.flags & (Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE)) != 0) {
++            return true;
++        }
++        Bundle e = n.extras;
++        return matches(e.getCharSequence("android.text")) || matches(e.getCharSequence("android.title"));
++    }
++
++    private static boolean matches(CharSequence cs) {
++        return cs != null && (SET.matcher(cs).find() || REST.matcher(cs).find());
++    }
++
++    // ---- przerwa ----------------------------------------------------------
++
++    private void updateRest(long remainingMs) {
++        long now = System.currentTimeMillis();
++        if (remainingMs <= 0) {
++            restEnd = -1;
++            restTotal = 0;
++            return;
++        }
++        long end = now + remainingMs;
++        // Hevy odswieza tekst co sekunde: koniec zmieniamy tylko przy realnej zmianie (+/-15 s, nowa przerwa).
++        if (restEnd < 0 || Math.abs(end - restEnd) > JITTER_MS) {
++            if (restEnd < 0) {
++                restTotal = 0;
++            }
++            restEnd = end;
++        }
++        restTotal = Math.max(restTotal, restEnd - now);
++    }
++
++    private float progress() {
++        if (restEnd <= 0 || restTotal <= 0) {
++            return -1f;
++        }
++        float p = (restEnd - System.currentTimeMillis()) / (float) restTotal;
++        return Math.max(0f, Math.min(1f, p));
++    }
++
++    /** Pozostaly czas przerwy w ms albo -1, jesli to nie jest przerwa. */
++    private long restRemainingMs(Notification n) {
++        Bundle e = n.extras;
++        String[] keys = {"android.title", "android.text", "android.subText", "android.bigText", "android.infoText"};
++        for (String k : keys) {
++            long r = parseRest(e.getCharSequence(k));
++            if (r >= 0) {
++                return r;
++            }
++        }
++        CharSequence[] lines = e.getCharSequenceArray("android.textLines");
++        if (lines != null) {
++            for (CharSequence l : lines) {
++                long r = parseRest(l);
++                if (r >= 0) {
++                    return r;
++                }
++            }
++        }
++        // Wlasny layout (RemoteViews): odliczajacy Chronometer albo TextView "Rest m:ss".
++        RemoteViews[] views = {n.bigContentView, n.contentView, n.headsUpContentView};
++        for (RemoteViews rv : views) {
++            if (rv == null) {
++                continue;
++            }
++            try {
++                long r = scanRest(rv.apply(ctx, new FrameLayout(ctx)));
++                if (r >= 0) {
++                    return r;
++                }
++            } catch (Throwable ignored) {
++                // layout Hevy moze uzywac klas niedostepnych w SystemUI
++            }
++        }
++        return -1;
++    }
++
++    private static long scanRest(View v) {
++        if (v instanceof Chronometer && ((Chronometer) v).isCountDown()) {
++            long ms = ((Chronometer) v).getBase() - SystemClock.elapsedRealtime();
++            if (ms > 0) {
++                return ms;
++            }
++        }
++        if (v instanceof TextView) {
++            long r = parseRest(((TextView) v).getText());
++            if (r >= 0) {
++                return r;
++            }
++        }
++        if (v instanceof ViewGroup) {
++            ViewGroup g = (ViewGroup) v;
++            for (int i = 0; i < g.getChildCount(); i++) {
++                long r = scanRest(g.getChildAt(i));
++                if (r >= 0) {
++                    return r;
++                }
++            }
++        }
++        return -1;
++    }
++
++    private static long parseRest(CharSequence cs) {
++        if (cs == null) {
++            return -1;
++        }
++        Matcher m = REST.matcher(cs);
++        if (!m.find()) {
++            return -1;
++        }
++        return (Integer.parseInt(m.group(1)) * 60L + Integer.parseInt(m.group(2))) * 1000L;
++    }
++
++    // ---- odswiezanie paska ------------------------------------------------
++
++    private void scheduleTick() {
++        main.removeCallbacks(tick);
++        if (restEnd > 0) {
++            main.postDelayed(tick, 1000);
++        }
++    }
++
++    private void onTick() {
++        if (last == null) {
++            return;
++        }
++        if (restEnd > 0 && System.currentTimeMillis() >= restEnd) {
++            restEnd = -1;
++            restTotal = 0;
++        }
++        try {
++            String sig = signature(last);
++            if (!sig.equals(lastSig)) {
++                current = build(last);
++                lastSig = sig;
++                onChanged.run();
++            }
++        } catch (Throwable t) {
++            XLog.e("hevy tick failed", t);
++        }
++        scheduleTick();
++    }
++
++    // ---- budowanie elementu ----------------------------------------------
++
++    private String signature(StatusBarNotification sbn) {
++        Notification n = sbn.getNotification();
++        Bundle e = n.extras;
++        StringBuilder sb = new StringBuilder();
++        sb.append(e.getCharSequence("android.title")).append('|');
++        if (restEnd <= 0) {
++            sb.append(e.getCharSequence("android.text"));
++        } else {
++            // w trakcie przerwy tekst zawiera odliczanie, wiec nie wchodzi do sygnatury
++            sb.append("rest|").append(restEnd).append('|').append((int) (progress() * 100f));
++        }
++        if (n.actions != null) {
++            for (Notification.Action a : n.actions) {
++                sb.append('|').append(a == null ? null : a.title);
++            }
++        }
++        return sb.toString();
++    }
++
++    private IslandItem build(StatusBarNotification sbn) {
++        Notification n = sbn.getNotification();
++        Bundle e = n.extras;
++        IslandItem it = new IslandItem("hevy:workout");
++        it.packageName = HEVY_PACKAGE;
++        it.kind = IslandItem.Kind.LIVE; // zmien na TIMER, jesli ma wygrywac z muzyka
++        it.postTime = sbn.getPostTime();
++        it.contentIntent = n.contentIntent;
++        it.appName = "Hevy";
++
++        CharSequence title = e.getCharSequence("android.title");
++        CharSequence text = e.getCharSequence("android.text");
++        it.title = title;
++        it.subtitle = text;
++
++        it.accent = n.color == 0 ? 0xFF4C9AFF : Colors.readableOnBlack(n.color);
++
++        // Kapsula: monochromatyczna ikona Hevy. Karta: obrazek cwiczenia po prawej.
++        it.icon = loadIcon(n.getSmallIcon());
++        it.iconIsImage = false;
++        if (it.icon == null) {
++            try {
++                it.icon = ctx.getPackageManager().getApplicationIcon(HEVY_PACKAGE);
++                it.iconIsImage = true;
++            } catch (Throwable ignored) {
++                // brak ikony: wyspa narysuje kropke w kolorze akcentu
++            }
++        }
++        String key = title == null ? "" : title.toString();
++        if (!key.equals(cachedTitle)) {
++            cachedLarge = loadIcon(n.getLargeIcon());
++            cachedTitle = key;
++        }
++        it.cardIcon = cachedLarge;
++
++        long now = System.currentTimeMillis();
++        if (restEnd > now) {
++            it.trailing = IslandItem.Trailing.CHRONOMETER;
++            it.chronoBase = restEnd;
++            it.chronoCountDown = true;
++            it.progress = progress();
++        } else if (text != null) {
++            Matcher m = SET.matcher(text);
++            if (m.find()) {
++                it.trailing = IslandItem.Trailing.TEXT;
++                it.trailingText = m.group(1) + "/" + m.group(2);
++            }
++        }
++
++        if (n.actions != null) {
++            for (Notification.Action a : n.actions) {
++                if (a == null || a.actionIntent == null || a.title == null) {
++                    continue;
++                }
++                it.actions.add(new IslandItem.Action(a.title, loadIcon(a.getIcon()), a.actionIntent, null, false));
++                if (it.actions.size() == MAX_ACTIONS) {
++                    break;
++                }
++            }
++        }
++        return it;
++    }
++
++    private Drawable loadIcon(Icon icon) {
++        if (icon == null) {
++            return null;
++        }
++        try {
++            return icon.loadDrawable(ctx);
++        } catch (Throwable t) {
++            return null;
++        }
++    }
++}
+diff --git a/app/src/main/java/dev/flexy/dynamicisland/island/IslandController.java b/app/src/main/java/dev/flexy/dynamicisland/island/IslandController.java
+index d73abfa..f74d5fa 100644
+--- a/app/src/main/java/dev/flexy/dynamicisland/island/IslandController.java
++++ b/app/src/main/java/dev/flexy/dynamicisland/island/IslandController.java
+@@ -40,6 +40,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
+     final CastSource cast;
+     final ExitAnimationBridge exit;
+     final AlertSource alerts;
++    final HevySource hevy;
+     private final FlashlightSource torch;
+     private final StatusBarIconFader fader;
+     private final AudioLevels audio = new AudioLevels();
+@@ -160,6 +161,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
+         cast = new CastSource(ctx);
+         exit = new ExitAnimationBridge(cl);
+         alerts = new AlertSource(ctx, this::requestRefresh);
++        hevy = new HevySource(ctx, this::requestRefresh);
+         torch = new FlashlightSource(ctx, main, this::requestRefresh);
+         fader = new StatusBarIconFader(density);
+     }
+@@ -180,10 +182,14 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
+     public void onNotifications(List<android.service.notification.StatusBarNotification> all) {
+         if (Looper.myLooper() != main.getLooper()) {
+             List<android.service.notification.StatusBarNotification> copy = new ArrayList<>(all);
+-            main.post(() -> alerts.onNotifications(copy));
++            main.post(() -> {
++                alerts.onNotifications(copy);
++                hevy.onNotifications(copy);
++            });
+             return;
+         }
+         alerts.onNotifications(all);
++        hevy.onNotifications(all);
+     }
+ 
+     public boolean hasTorch() {
+@@ -367,6 +373,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
+             media.collect(items, oa.foregroundPackage(), hidden, packages);
+             cast.collect(items);
+             AssistantApp.collectAll(items, ctx);
++            hevy.collect(items, oa.foregroundPackage());
+             if (torch.available()) items.removeIf(FlashlightSource::isSystemTorchItem);
+             torch.collect(items, view.isExpanded());
+             addSavedRecording(items);
