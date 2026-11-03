@@ -1,0 +1,60 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Naklada patch z Hevy (plik hevy-island.patch w glownym folderze forka).
+      # Zmiana dotyczy tylko runnera; kod w forku zostaje taki jak w upstreamie.
+      - name: Apply Hevy patch
+        run: |
+          if [ -f app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java ]; then
+            echo "Patch juz nalozony w repo, pomijam."
+          elif [ -f hevy-island.patch ]; then
+            git apply --verbose hevy-island.patch
+          else
+            echo "Brak pliku hevy-island.patch w glownym folderze repo." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Opcjonalnie: staly klucz podpisu, zeby kolejne buildy aktualizowaly sie bez odinstalowania.
+      # Sekret DEBUG_KEYSTORE_B64 = base64 pliku debug.keystore (patrz instrukcja).
+      - name: Stable signing key (optional)
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            mkdir -p ~/.android
+            echo "$KS" | base64 -d > ~/.android/debug.keystore
+            echo "Uzyto stalego klucza debug."
+          else
+            echo "Brak sekretu, uzyty zostanie losowy klucz debug."
+          fi
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneUisland-hevy-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
