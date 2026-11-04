@@ -21,6 +21,11 @@ public final class Settings {
     public static final String ALERT_BATTERY = "alert_battery";
     public static final boolean DEF_ALERT_BATTERY = true;
 
+    public static final String ALERT_CHARGING = "alert_charging";
+    public static final boolean DEF_ALERT_CHARGING = true;
+    public static final String ALERT_NFC_PAY = "alert_nfc_pay";
+    public static final boolean DEF_ALERT_NFC_PAY = true;
+
     public static final boolean DEF_ALERT_PODS = true;
     public static final boolean DEF_PODS_EVERY_UNLOCK = true;
     public static final boolean DEF_ALERT_DND = true;

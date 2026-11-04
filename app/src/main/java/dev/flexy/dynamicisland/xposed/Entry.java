@@ -8,6 +8,7 @@ public final class Entry implements IXposedHookLoadPackage {
     private static boolean voiceInstalled;
     private static boolean claudeInstalled;
     private static boolean gptInstalled;
+    private static boolean nfcInstalled;
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -52,5 +53,15 @@ public final class Entry implements IXposedHookLoadPackage {
             }
         }
 
+        if (NfcPaymentHook.PACKAGE.equals(lpparam.packageName)
+                && NfcPaymentHook.PACKAGE.equals(lpparam.processName)
+                && !nfcInstalled) {
+            nfcInstalled = true;
+            try {
+                NfcPaymentHook.install(lpparam.classLoader);
+            } catch (Throwable t) {
+                XLog.e("nfc payment install failed", t);
+            }
+        }
     }
 }

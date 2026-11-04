@@ -29,6 +29,14 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_BATTERY, Settings.DEF_ALERT_BATTERY);
     }
 
+    static boolean alertCharging() {
+        return values.getBoolean(Settings.ALERT_CHARGING, Settings.DEF_ALERT_CHARGING);
+    }
+
+    static boolean alertNfcPay() {
+        return values.getBoolean(Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
+    }
+
     static boolean alertPods() {
         return values.getBoolean(Settings.ALERT_PODS, Settings.DEF_ALERT_PODS);
     }
