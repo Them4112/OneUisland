@@ -80,8 +80,8 @@ final class NfcPaySource {
         it.iconTint = GREEN;
         it.title = "";
         it.pulsingDot = false;
-        it.animatedIcon = active;
-        wave.animate = active;
+        it.animatedIcon = true;
+        wave.settleAt = active ? 0 : doneAt;
         it.noExpand = true;
         it.postTime = Long.MAX_VALUE - 2;
         out.add(it);
@@ -104,27 +104,34 @@ final class NfcPaySource {
         public void draw(Canvas c) {
             float w = getBounds().width();
             float h = getBounds().height();
-            float cx = getBounds().left + w * 0.22f;
+            float cx = getBounds().left + w * 0.78f;
             float cy = getBounds().top + h / 2f;
             p.setStrokeWidth(w * 0.09f);
             float ph = (SystemClock.uptimeMillis() % 1300) / 1300f;
-            if (!animate) ph = -1f;
+            float settle = settleAt == 0 ? 0f : Math.min(1f, (SystemClock.uptimeMillis() - settleAt) / 450f);
+            float fade = settleAt == 0 ? 0f : Math.max(0f, Math.min(1f,
+                    (SystemClock.uptimeMillis() - settleAt - (DONE_MS - 450)) / 450f));
+            int save = c.save();
+            float sc = 1f - 0.3f * fade;
+            c.scale(sc, sc, getBounds().exactCenterX(), cy);
             for (int k = 1; k <= 3; k++) {
                 float rad = w * 0.17f * k;
                 r.set(cx - rad, cy - rad, cx + rad, cy + rad);
                 p.setColor(tint);
                 float lit = 1f;
-                if (ph >= 0f) {
+                {
                     float d = Math.abs(ph * 4f - k);
                     d = Math.min(d, 4f - d);
                     lit = 0.25f + 0.75f * Math.max(0f, 1f - d / 1.2f);
+                    lit += (1f - lit) * settle;
                 }
-                p.setAlpha(Math.round(alpha * lit));
-                c.drawArc(r, -42, 84, false, p);
+                p.setAlpha(Math.round(alpha * lit * (1f - fade)));
+                c.drawArc(r, 138, 84, false, p);
             }
+            c.restoreToCount(save);
         }
 
-        boolean animate;
+        long settleAt;
         private int tint = 0xFFFFFFFF;
         private int alpha = 255;
 

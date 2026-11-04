@@ -88,6 +88,9 @@ public final class SettingsActivity extends Activity {
         toggle(alerts, "Sound / Vibrate / Mute", Settings.ALERT_RINGER, Settings.DEF_ALERT_RINGER);
         toggle(alerts, "Low battery (20% and 10%)", Settings.ALERT_BATTERY, Settings.DEF_ALERT_BATTERY);
         toggle(alerts, "Charging started", Settings.ALERT_CHARGING, Settings.DEF_ALERT_CHARGING);
+        toggle(alerts, "Hotspot on / off", Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
+        toggle(alerts, "Wi-Fi / Bluetooth connected", Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
+        toggle(alerts, "Phone unlocked", Settings.ALERT_UNLOCK, Settings.DEF_ALERT_UNLOCK);
         toggle(alerts, "Contactless payment (NFC)", Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
 
         Button reset = new Button(this);

@@ -33,6 +33,18 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_CHARGING, Settings.DEF_ALERT_CHARGING);
     }
 
+    static boolean alertHotspot() {
+        return values.getBoolean(Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
+    }
+
+    static boolean alertConnect() {
+        return values.getBoolean(Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
+    }
+
+    static boolean alertUnlock() {
+        return values.getBoolean(Settings.ALERT_UNLOCK, Settings.DEF_ALERT_UNLOCK);
+    }
+
     static boolean alertNfcPay() {
         return values.getBoolean(Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
     }

@@ -41,6 +41,7 @@ final class AlertSource {
     void start() {
         startBluetooth();
         startBattery();
+        startConnections();
         dndOn = dndOn();
         ringerMode = ringerMode();
         try {
@@ -89,7 +90,94 @@ final class AlertSource {
 
     void onUnlocked() {
         Pods p = shownPods();
-        if (p != null && IslandSettings.alertPods() && IslandSettings.podsEveryUnlock()) show(podsItem(p));
+        if (p != null && IslandSettings.alertPods() && IslandSettings.podsEveryUnlock()) {
+            show(podsItem(p));
+        } else if (IslandSettings.alertUnlock()) {
+            show(unlockItem(), 1800);
+        }
+    }
+
+    private IslandItem unlockItem() {
+        IslandItem it = new IslandItem("alert:unlock");
+        it.alert = true;
+        it.kind = IslandItem.Kind.LIVE;
+        it.packageName = ctx.getPackageName();
+        it.icon = new GlyphDrawable(GlyphDrawable.UNLOCK, false);
+        it.iconColor = true;
+        it.iconTint = CHARGE_GREEN;
+        it.accent = CHARGE_GREEN;
+        it.animatedIcon = true;
+        it.title = "";
+        it.postTime = Long.MAX_VALUE;
+        return it;
+    }
+
+    private String lastSsid;
+
+    private void startConnections() {
+        try {
+            ctx.registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent i) {
+                    try {
+                        android.net.NetworkInfo ni = i.getParcelableExtra(android.net.wifi.WifiManager.EXTRA_NETWORK_INFO,
+                                android.net.NetworkInfo.class);
+                        if (ni == null) return;
+                        if (!ni.isConnected()) {
+                            if (ni.getState() == android.net.NetworkInfo.State.DISCONNECTED) lastSsid = null;
+                            return;
+                        }
+                        android.net.wifi.WifiManager wm = ctx.getSystemService(android.net.wifi.WifiManager.class);
+                        String ssid = wm.getConnectionInfo().getSSID();
+                        if (ssid == null || ssid.contains("unknown ssid")) return;
+                        if (ssid.length() > 1 && ssid.startsWith("\"") && ssid.endsWith("\""))
+                            ssid = ssid.substring(1, ssid.length() - 1);
+                        if (ssid.equals(lastSsid)) return;
+                        lastSsid = ssid;
+                        if (IslandSettings.alertConnect()) show(connectItem("alert:wifi", GlyphDrawable.WIFI, ssid, 0xFF0A84FF), 2500);
+                    } catch (Throwable t) {
+                        XLog.e("wifi connect alert failed", t);
+                    }
+                }
+            }, new IntentFilter(android.net.wifi.WifiManager.NETWORK_STATE_CHANGED_ACTION), Context.RECEIVER_EXPORTED);
+            ctx.registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent i) {
+                    try {
+                        android.bluetooth.BluetoothDevice d = i.getParcelableExtra(android.bluetooth.BluetoothDevice.EXTRA_DEVICE,
+                                android.bluetooth.BluetoothDevice.class);
+                        if (d == null) return;
+                        android.bluetooth.BluetoothClass bc = d.getBluetoothClass();
+                        if (bc != null && bc.getMajorDeviceClass() == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO) return;
+                        String name = d.getName();
+                        if (name == null || name.isEmpty()) return;
+                        if (IslandSettings.alertConnect()) show(connectItem("alert:bluetooth", GlyphDrawable.BLUETOOTH, name, 0xFF0A84FF), 2500);
+                    } catch (Throwable t) {
+                        XLog.e("bluetooth connect alert failed", t);
+                    }
+                }
+            }, new IntentFilter(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED), Context.RECEIVER_EXPORTED);
+        } catch (Throwable t) {
+            XLog.e("connection receivers failed", t);
+        }
+    }
+
+    private IslandItem connectItem(String key, int glyph, String name, int color) {
+        IslandItem it = new IslandItem(key);
+        it.alert = true;
+        it.kind = IslandItem.Kind.LIVE;
+        it.packageName = ctx.getPackageName();
+        it.icon = new GlyphDrawable(glyph, false);
+        it.iconColor = true;
+        it.iconTint = color;
+        it.accent = color;
+        it.animatedIcon = true;
+        it.title = name;
+        it.trailing = IslandItem.Trailing.TEXT;
+        it.trailingText = "Connected";
+        it.trailingColor = color;
+        it.postTime = Long.MAX_VALUE;
+        return it;
     }
 
     private void show(IslandItem item) {
@@ -190,6 +278,12 @@ final class AlertSource {
         batteryLevel = level;
         boolean justPlugged = plugged && !wasPlugged;
         wasPlugged = plugged;
+        if (before >= 0 && plugged && level >= 100 && before < 100 && IslandSettings.alertCharging()) {
+            IslandItem full = chargingItem(level, plugType);
+            full.title = "Fully charged";
+            show(full, BATTERY_SHOW_MS);
+            return;
+        }
         if (before >= 0 && justPlugged && IslandSettings.alertCharging()) {
             show(chargingItem(level, plugType), BATTERY_SHOW_MS);
             return;
@@ -222,9 +316,8 @@ final class AlertSource {
         it.trailing = IslandItem.Trailing.TEXT;
         it.trailingText = level + "%";
         it.trailingColor = CHARGE_GREEN;
-        boolean pl = "pl".equals(java.util.Locale.getDefault().getLanguage());
         boolean wireless = plugType == android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS;
-        it.title = wireless ? (pl ? "Ładowanie bezprzewodowe" : "Wireless charging") : (pl ? "Ładowanie" : "Charging");
+        it.title = wireless ? "Wireless charging" : "Charging";
         it.postTime = Long.MAX_VALUE;
         return it;
     }

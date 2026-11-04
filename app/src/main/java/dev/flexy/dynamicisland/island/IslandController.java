@@ -38,6 +38,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
     final OaSource oa;
     final MediaSource media;
     private final NfcPaySource nfcPay;
+    private final HotspotSource hotspot;
     final CastSource cast;
     final ExitAnimationBridge exit;
     final AlertSource alerts;
@@ -159,6 +160,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         oa = new OaSource(ctx, cl);
         media = new MediaSource(ctx, main, this::requestRefresh);
         nfcPay = new NfcPaySource(ctx, main, () -> main.post(this::requestRefresh));
+        hotspot = new HotspotSource(ctx, main, () -> main.post(this::requestRefresh));
         cast = new CastSource(ctx);
         exit = new ExitAnimationBridge(cl);
         alerts = new AlertSource(ctx, this::requestRefresh);
@@ -231,6 +233,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         alerts.start();
         torch.start();
         nfcPay.start();
+        hotspot.start();
         VoiceLevels.get().register(ctx, () -> main.post(this::requestRefresh));
         AssistantApp.register(ctx, () -> main.post(this::requestRefresh));
         IslandSettings.watch(ctx, () -> {
@@ -374,6 +377,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             torch.collect(items, view.isExpanded());
             addSavedRecording(items);
             nfcPay.collect(items);
+            hotspot.collect(items);
         } catch (Throwable t) {
             XLog.e("collect failed", t);
         }
