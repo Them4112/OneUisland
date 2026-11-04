@@ -14,6 +14,8 @@ import android.os.Handler;
 import android.os.SystemClock;
 
 import java.util.List;
+
+import dev.flexy.dynamicisland.xposed.XLog;
 import java.util.Locale;
 
 final class NfcPaySource {
@@ -37,11 +39,13 @@ final class NfcPaySource {
     }
 
     void start() {
+        XLog.i("nfc pay receiver registering");
         ctx.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
-                if (!IslandSettings.alertNfcPay()) return;
                 String s = i.getStringExtra("state");
+                XLog.i("nfc pay broadcast state=" + s + " enabled=" + IslandSettings.alertNfcPay());
+                if (!IslandSettings.alertNfcPay()) return;
                 long now = SystemClock.uptimeMillis();
                 synchronized (NfcPaySource.this) {
                     if ("start".equals(s)) {
@@ -82,6 +86,7 @@ final class NfcPaySource {
         it.noExpand = true;
         it.postTime = Long.MAX_VALUE - 2;
         out.add(it);
+        XLog.i("nfc pay item added active=" + active);
         if (done) main.postDelayed(onChanged, Math.max(16, doneAt + DONE_MS - now + 20));
         return true;
     }
