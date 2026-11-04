@@ -54,7 +54,18 @@ final class GlyphDrawable extends Drawable {
         float w = getBounds().width();
         float cx = getBounds().exactCenterX();
         float cy = getBounds().exactCenterY();
-        float t = ease((SystemClock.uptimeMillis() - born) / 550f);
+        float x = (SystemClock.uptimeMillis() - born) / 1300f;
+        float cf = ease((SystemClock.uptimeMillis() - born - 250) / 450f);
+        int mixed = 0xFF000000
+                | (Math.round(255 + (((tint >> 16) & 255) - 255) * cf) << 16)
+                | (Math.round(255 + (((tint >> 8) & 255) - 255) * cf) << 8)
+                | Math.round(255 + ((tint & 255) - 255) * cf);
+        p.setColor(mixed);
+        p.setAlpha(alpha);
+        float lift = ease(x / 0.4f);
+        float sw = Math.max(0f, Math.min(1f, (x - 0.3f) / 0.7f));
+        float back = sw - 1f;
+        float swing = 1f + 2.2f * back * back * back + 1.2f * back * back;
         float bw = w * 0.56f, bh = w * 0.40f;
         float bodyTop = cy - bh * 0.15f;
         p.setStyle(Paint.Style.FILL);
@@ -65,14 +76,14 @@ final class GlyphDrawable extends Drawable {
         float sr = bw * 0.30f;
         float lx = cx - sr;
         int save = c.save();
-        c.translate(0, -t * w * 0.07f);
-        c.rotate(-32f * t, lx, bodyTop);
+        c.translate(0, -lift * w * 0.08f);
+        c.rotate(-58f * swing, lx, bodyTop);
         path.rewind();
         path.moveTo(lx, bodyTop);
         path.lineTo(lx, bodyTop - sr);
         r.set(cx - sr, bodyTop - sr * 2f, cx + sr, bodyTop);
         path.arcTo(r, 180, 180);
-        path.lineTo(cx + sr, bodyTop - sr * (1f - 0.55f * (1f - t)) + 0f);
+        path.lineTo(cx + sr, bodyTop - sr * 0.55f * lift);
         c.drawPath(path, p);
         c.restoreToCount(save);
     }

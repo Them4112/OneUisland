@@ -93,7 +93,7 @@ final class AlertSource {
         if (p != null && IslandSettings.alertPods() && IslandSettings.podsEveryUnlock()) {
             show(podsItem(p));
         } else if (IslandSettings.alertUnlock()) {
-            show(unlockItem(), 1800);
+            show(unlockItem(), 2600);
         }
     }
 

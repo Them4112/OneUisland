@@ -90,8 +90,7 @@ final class HotspotSource {
         it.trailing = IslandItem.Trailing.TEXT;
         it.trailingText = "On";
         it.trailingColor = BLUE;
-        it.iconTap = this::turnOff;
-        it.toggle = 1;
+        it.actions.add(new IslandItem.Action("Stop", null, null, this::turnOff, true));
         it.postTime = Long.MAX_VALUE - 5;
         out.add(it);
         long next = burst ? BURST_MS - phase : CYCLE_MS - phase;
