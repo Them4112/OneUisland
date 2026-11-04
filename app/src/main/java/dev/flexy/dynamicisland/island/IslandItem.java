@@ -82,6 +82,7 @@ public final class IslandItem {
     public float progress = -1f;
     public boolean progressStyle;
     public boolean pulsingDot;
+    public boolean animatedIcon;
     public Drawable leftImage;
     public Drawable rightImage;
     public int pillColor;

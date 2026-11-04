@@ -16,7 +16,6 @@ import android.os.SystemClock;
 import java.util.List;
 
 import dev.flexy.dynamicisland.xposed.XLog;
-import java.util.Locale;
 
 final class NfcPaySource {
     static final String ACTION = "dev.flexy.dynamicisland.NFC_PAYMENT";
@@ -30,7 +29,7 @@ final class NfcPaySource {
     private boolean active;
     private long startedAt;
     private long doneAt;
-    private final Drawable wave = new WaveDrawable();
+    private final WaveDrawable wave = new WaveDrawable();
 
     NfcPaySource(Context ctx, Handler main, Runnable onChanged) {
         this.ctx = ctx;
@@ -72,7 +71,6 @@ final class NfcPaySource {
         }
         boolean done = !active && doneAt > 0 && now - doneAt < DONE_MS;
         if (!active && !done) return false;
-        boolean pl = "pl".equals(Locale.getDefault().getLanguage());
         IslandItem it = new IslandItem("nfc:pay");
         it.kind = IslandItem.Kind.LIVE;
         it.packageName = "com.android.nfc";
@@ -80,13 +78,15 @@ final class NfcPaySource {
         it.icon = wave;
         it.iconColor = true;
         it.iconTint = GREEN;
-        it.title = active ? (pl ? "Płatność" : "Payment") : (pl ? "Gotowe" : "Done");
-        it.appName = pl ? "Płatność zbliżeniowa" : "Contactless payment";
+        it.title = "";
         it.pulsingDot = false;
+        it.animatedIcon = active;
+        wave.animate = active;
         it.noExpand = true;
         it.postTime = Long.MAX_VALUE - 2;
         out.add(it);
         XLog.i("nfc pay item added active=" + active);
+        if (active) main.postDelayed(onChanged, Math.max(16, startedAt + MAX_ACTIVE_MS - now + 20));
         if (done) main.postDelayed(onChanged, Math.max(16, doneAt + DONE_MS - now + 20));
         return true;
     }
@@ -104,25 +104,43 @@ final class NfcPaySource {
         public void draw(Canvas c) {
             float w = getBounds().width();
             float h = getBounds().height();
-            float cx = getBounds().left + w * 0.30f;
+            float cx = getBounds().left + w * 0.22f;
             float cy = getBounds().top + h / 2f;
             p.setStrokeWidth(w * 0.09f);
+            float ph = (SystemClock.uptimeMillis() % 1300) / 1300f;
+            if (!animate) ph = -1f;
             for (int k = 1; k <= 3; k++) {
                 float rad = w * 0.17f * k;
                 r.set(cx - rad, cy - rad, cx + rad, cy + rad);
-                p.setAlpha(255 - (k - 1) * 55);
+                p.setColor(tint);
+                float lit = 1f;
+                if (ph >= 0f) {
+                    float d = Math.abs(ph * 4f - k);
+                    d = Math.min(d, 4f - d);
+                    lit = 0.25f + 0.75f * Math.max(0f, 1f - d / 1.2f);
+                }
+                p.setAlpha(Math.round(alpha * lit));
                 c.drawArc(r, -42, 84, false, p);
             }
         }
 
+        boolean animate;
+        private int tint = 0xFFFFFFFF;
+        private int alpha = 255;
+
+        @Override
+        public void setTint(int color) {
+            tint = color;
+        }
+
         @Override
         public void setAlpha(int a) {
+            alpha = a;
         }
 
         @Override
         public void setColorFilter(ColorFilter f) {
             p.setColorFilter(f);
-            p.setColor(0xFFFFFFFF);
         }
 
         @Override

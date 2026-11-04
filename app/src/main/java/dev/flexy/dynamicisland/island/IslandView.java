@@ -1256,7 +1256,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         if (mainIn != null && mode == Mode.COMPACT) {
             IslandItem it = mainIn.content.item;
             if (it.trailing == IslandItem.Trailing.WAVEFORM) waveItem = it;
-            need |= it.pulsingDot;
+            need |= it.pulsingDot || it.animatedIcon;
         }
         IslandItem detailed = detailedBubbleItem();
         if (waveItem == null && detailed != null && detailed.trailing == IslandItem.Trailing.WAVEFORM) waveItem = detailed;
@@ -1265,11 +1265,11 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         need |= now() < rollUntil;
         need |= toggleAnimating();
         need |= torchAnimating();
-        if (bubbleIn != null) need |= bubbleIn.content.item.pulsingDot || runningStopwatch(bubbleIn.content.item);
+        if (bubbleIn != null) need |= bubbleIn.content.item.pulsingDot || bubbleIn.content.item.animatedIcon || runningStopwatch(bubbleIn.content.item);
         if (mainIn != null && recAnimating(mainIn.content.item)) need = true;
         if (bubbleIn != null && recAnimating(bubbleIn.content.item)) need = true;
         for (Card c : cards) {
-            need |= c.item.pulsingDot;
+            need |= c.item.pulsingDot || c.item.animatedIcon;
             need |= recAnimating(c.item) || runningStopwatch(c.item);
             need |= mode == Mode.EXPANDED && (c.item.isMedia || c.item.iconRight);
         }
