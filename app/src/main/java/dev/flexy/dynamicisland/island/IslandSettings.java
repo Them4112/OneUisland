@@ -37,6 +37,10 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
     }
 
+    static boolean outline() {
+        return values.getBoolean(Settings.OUTLINE, Settings.DEF_OUTLINE);
+    }
+
     static boolean alertUnlock() {
         return values.getBoolean(Settings.ALERT_UNLOCK, Settings.DEF_ALERT_UNLOCK);
     }

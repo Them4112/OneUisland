@@ -58,6 +58,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
     private int statusBarWindowState;
     private boolean revealPending;
     private boolean keyguardStuck;
+    private boolean lockShown;
     private long sleepFoldAt = -SLEEP_FOLD_MS;
     private static final long SLEEP_FOLD_MS = 420;
     private final Runnable afterSleepFold = this::updateSuppression;
@@ -315,7 +316,11 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         boolean unlocking = (barState == 1 || barState == 2) && state == 0;
         if (barState == 0 && state == 1) startSleepFold();
         barState = state;
-        if (unlocking) {
+        if (unlocking && lockShown && state == 0 && !dozing) {
+            lockShown = false;
+            alerts.onUnlocked();
+            requestRefresh();
+        } else if (unlocking) {
             revealPending = true;
             main.removeCallbacks(revealRunnable);
             main.postDelayed(revealRunnable, UNLOCK_REVEAL_DELAY_MS);
@@ -447,11 +452,16 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             if (m != null) hiddenList.add(m);
         }
         IslandItem alert = alerts.current(now, view.isExpanded());
+        boolean lockedIcon = false;
+        if (alert == null && lockShown) {
+            alert = alerts.lockedItem();
+            lockedIcon = true;
+        }
         if (IslandSettings.previewLength()) {
             view.setItems(Collections.singletonList(lengthPreview), IslandView.HINT_NONE, Collections.emptyList());
         } else if (alert != null) {
             view.setItems(Collections.singletonList(alert), IslandView.HINT_NONE, Collections.emptyList());
-            main.postDelayed(this::requestRefresh, Math.max(16, alerts.until() - now));
+            if (!lockedIcon) main.postDelayed(this::requestRefresh, Math.max(16, alerts.until() - now));
         } else {
             view.setItems(items, hint, hiddenList);
             if (flyIn && wasVisible) view.absorb();
@@ -634,7 +644,12 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         boolean keyguard = barState == 1 || barState == 2;
         view.setStatusBarHidden(statusBarWindowState != 0);
         boolean folding = SystemClock.uptimeMillis() - sleepFoldAt < SLEEP_FOLD_MS;
-        view.setSuppressed(((keyguard || keyguardStuck || dozing) && !folding) || revealPending);
+        boolean lockShow = barState == 1 && !dozing && !folding && !revealPending && IslandSettings.alertUnlock();
+        view.setSuppressed(((keyguard || keyguardStuck || dozing) && !folding && !lockShow) || revealPending);
+        if (lockShow != lockShown) {
+            lockShown = lockShow;
+            requestRefresh();
+        }
         onIslandFrame();
     }
 

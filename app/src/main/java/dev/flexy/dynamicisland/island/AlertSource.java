@@ -94,19 +94,43 @@ final class AlertSource {
             show(podsItem(p));
         } else if (IslandSettings.alertUnlock()) {
             show(unlockItem(), 2600);
+        } else {
+            lockGlyph = null;
         }
     }
 
-    private IslandItem unlockItem() {
+    private GlyphDrawable lockGlyph;
+
+    IslandItem lockedItem() {
+        if (lockGlyph == null) lockGlyph = new GlyphDrawable(GlyphDrawable.UNLOCK, false).frozen();
         IslandItem it = new IslandItem("alert:unlock");
         it.alert = true;
         it.kind = IslandItem.Kind.LIVE;
         it.packageName = ctx.getPackageName();
-        it.icon = new GlyphDrawable(GlyphDrawable.UNLOCK, false);
+        it.icon = lockGlyph;
+        it.iconColor = true;
+        it.iconTint = 0xFFFFFFFF;
+        it.accent = 0xFFFFFFFF;
+        it.title = "";
+        it.noExpand = true;
+        it.postTime = Long.MAX_VALUE;
+        return it;
+    }
+
+    private IslandItem unlockItem() {
+        if (lockGlyph == null) lockGlyph = new GlyphDrawable(GlyphDrawable.UNLOCK, false);
+        lockGlyph.play();
+        IslandItem it = new IslandItem("alert:unlock");
+        it.alert = true;
+        it.kind = IslandItem.Kind.LIVE;
+        it.packageName = ctx.getPackageName();
+        it.icon = lockGlyph;
+        lockGlyph = null;
         it.iconColor = true;
         it.iconTint = CHARGE_GREEN;
         it.accent = CHARGE_GREEN;
         it.animatedIcon = true;
+        it.noExpand = true;
         it.title = "";
         it.postTime = Long.MAX_VALUE;
         return it;

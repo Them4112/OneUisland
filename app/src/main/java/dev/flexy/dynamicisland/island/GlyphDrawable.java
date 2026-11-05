@@ -17,7 +17,8 @@ final class GlyphDrawable extends Drawable {
 
     private final int type;
     private boolean pulse;
-    private final long born = SystemClock.uptimeMillis();
+    private long born = SystemClock.uptimeMillis();
+    private boolean frozen;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private final RectF r = new RectF();
@@ -29,6 +30,16 @@ final class GlyphDrawable extends Drawable {
         this.pulse = pulse;
         p.setStrokeCap(Paint.Cap.ROUND);
         p.setStrokeJoin(Paint.Join.ROUND);
+    }
+
+    GlyphDrawable frozen() {
+        frozen = true;
+        return this;
+    }
+
+    void play() {
+        frozen = false;
+        born = SystemClock.uptimeMillis();
     }
 
     void setPulse(boolean v) {
@@ -54,8 +65,9 @@ final class GlyphDrawable extends Drawable {
         float w = getBounds().width();
         float cx = getBounds().exactCenterX();
         float cy = getBounds().exactCenterY();
-        float x = (SystemClock.uptimeMillis() - born) / 1300f;
-        float cf = ease((SystemClock.uptimeMillis() - born - 250) / 450f);
+        long el = frozen ? 0 : SystemClock.uptimeMillis() - born;
+        float x = el / 1300f;
+        float cf = ease((el - 250) / 450f);
         int mixed = 0xFF000000
                 | (Math.round(255 + (((tint >> 16) & 255) - 255) * cf) << 16)
                 | (Math.round(255 + (((tint >> 8) & 255) - 255) * cf) << 8)

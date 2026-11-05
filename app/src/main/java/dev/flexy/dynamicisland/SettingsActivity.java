@@ -72,6 +72,7 @@ public final class SettingsActivity extends Activity {
                 Settings.DEF_MAX_CHARS, v -> v >= Settings.NO_MAX_CHARS ? "No limit" : v + " chars", Settings.PREVIEW_LENGTH);
         link(island, "Island position", this::positionSummary, () ->
                 startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SCREEN, SCREEN_POSITION)));
+        toggle(island, "White outline", Settings.OUTLINE, Settings.DEF_OUTLINE);
         toggle(island, "Detailed second capsule", Settings.DETAILED_BUBBLE, Settings.DEF_DETAILED_BUBBLE);
 
         gap(root);

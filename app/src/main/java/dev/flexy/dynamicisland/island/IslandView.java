@@ -818,6 +818,8 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         scheduleFrame();
     }
 
+    private final Spring outlineOn = new Spring(1f, 0.35f, 1f).setValueThreshold(0.002f);
+    private float outlineTarget = 1f;
     private final Spring pillBlob = new Spring(1f, 0.2f, 1f).setValueThreshold(0.002f);
     private final Runnable fadePillBlob = this::fadePillBlobNow;
 
@@ -856,7 +858,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
 
     private void settleHiddenHeightNow() {
         if (mode != Mode.HIDDEN) return;
-        height.animateTo(Math.min(restWidth(), pillH), 0.4f, 1f);
+        height.animateTo(Math.min(restWidth() * 0.9f, pillH), 0.34f, 1f);
         scheduleFrame();
     }
 
@@ -872,11 +874,11 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         if (bubbleIn != null) bubbleOut = bubbleIn.toOutgoing(t, 0);
         bubbleIn = null;
         float end = restWidth();
-        width.animateTo(end, 0.3f, 1f);
+        width.animateTo(end, 0.36f, 1f);
         split.animateTo(0f, 0.3f, 1f);
         offsetX.animateTo(0f, 0.3f, 1f);
         removeCallbacks(settleHiddenHeight);
-        postDelayed(settleHiddenHeight, 240);
+        postDelayed(settleHiddenHeight, 90);
         if (holeD <= 0) visibility.animateTo(0f, 0.22f, 1f);
         scheduleFrame();
         if (wasExpanded) host.onExpandedChanged(false);
@@ -1131,6 +1133,12 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         active |= offsetX.step(dt);
         active |= split.step(dt);
         active |= stepBubbleExtra(dt);
+        float ot = IslandSettings.outline() ? 1f : 0f;
+        if (ot != outlineTarget) {
+            outlineTarget = ot;
+            outlineOn.animateTo(ot, 0.35f, 1f);
+        }
+        active |= outlineOn.step(dt);
         active |= pillBlob.step(dt);
         active |= stackDx.step(dt);
         active |= stackDy.step(dt);
@@ -1629,15 +1637,20 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         }
         boolean pillVisible = mainRect.width() > 0.5f && mainRect.height() > 0.5f;
         boolean glass = glassActive();
-        if (!glass && ((pillVisible && mode == Mode.COMPACT) || hasBubble)) {
+        float outlineA = clamp01((mainRect.width() - restWidth() - dp(2)) / dp(28))
+                * clamp01((mainRect.height() - restWidth() * 0.9f) / dp(3)) * outlineOn.value();
+        float bubbleOutlineA = outlineOn.value();
+        if (!glass && ((pillVisible && outlineA > 0.01f) || (hasBubble && bubbleOutlineA > 0.01f))) {
             outlinePaint.setStyle(Paint.Style.FILL);
             float o = outlineW;
-            if (pillVisible) {
+            if (pillVisible && outlineA > 0.01f) {
+                outlinePaint.setAlpha(Math.round(0x47 * outlineA));
                 tmpRect.set(mainRect);
                 tmpRect.inset(-o, -o);
                 canvas.drawRoundRect(tmpRect, r + o, r + o, outlinePaint);
             }
             if (hasBubble) {
+                outlinePaint.setAlpha(Math.round(0x47 * bubbleOutlineA));
                 tmpRect.set(bubbleRect);
                 tmpRect.inset(-o, -o);
                 canvas.drawRoundRect(tmpRect, br + o, br + o, outlinePaint);

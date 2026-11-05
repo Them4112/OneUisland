@@ -27,6 +27,8 @@ public final class Settings {
     public static final boolean DEF_ALERT_CONNECT = true;
     public static final String ALERT_UNLOCK = "alert_unlock";
     public static final boolean DEF_ALERT_UNLOCK = true;
+    public static final String OUTLINE = "outline";
+    public static final boolean DEF_OUTLINE = true;
     public static final String ALERT_NFC_PAY = "alert_nfc_pay";
     public static final boolean DEF_ALERT_NFC_PAY = true;
 
