@@ -374,6 +374,8 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         return window != null && window.setSurfaceFade(alpha, scale, px, py);
     }
 
+    private String lastDbg;
+
     private void refreshNow() {
         refreshPosted = false;
         ensureWindow();
@@ -462,6 +464,12 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             if (m != null) hiddenList.add(m);
         }
         IslandItem alert = alerts.current(now, view.isExpanded());
+        String dbg = items.size() + "/" + (alert != null) + "/" + lockShown;
+        if (!dbg.equals(lastDbg)) {
+            lastDbg = dbg;
+            XLog.i("island refresh items=" + items.size() + " alert=" + (alert != null) + " lockShown=" + lockShown
+                    + " | " + view.debugState());
+        }
         boolean lockedIcon = false;
         if (alert == null && lockShown) {
             alert = alerts.lockedItem();

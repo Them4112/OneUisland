@@ -694,6 +694,13 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         return mode == Mode.EXPANDED;
     }
 
+    public String debugState() {
+        return "mode=" + mode + " holeD=" + holeD + " shadeHidden=" + shadeHidden + " (shade=" + shadeFold
+                + " bar=" + statusBarFold + " sleep=" + sleepFold + ") suppressed=" + suppressed
+                + " suppress=" + suppress.value() + " vis=" + visibility.value() + " w=" + width.value()
+                + " h=" + height.value() + " screenW=" + getWidth();
+    }
+
     public boolean isFullyHidden() {
         boolean noShape = mode == Mode.HIDDEN && visibility.isAtRest() && visibility.value() <= 0.001f && cards.isEmpty();
         boolean holdTouchZone = mode == Mode.HIDDEN && host.hasMinimized() && !suppressed && !shadeHidden;
@@ -854,14 +861,6 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         host.onWindowHeightNeeded(compactWindowHeight());
     }
 
-    private final Runnable settleHiddenHeight = this::settleHiddenHeightNow;
-
-    private void settleHiddenHeightNow() {
-        if (mode != Mode.HIDDEN) return;
-        height.animateTo(Math.min(restWidth() * 0.9f, pillH), 0.34f, 1f);
-        scheduleFrame();
-    }
-
     private void goHidden(boolean toLeft) {
         removeCallbacks(fadePillBlob);
         pillBlob.animateTo(1f, 0.1f, 1f);
@@ -869,16 +868,15 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         if (mode == Mode.HIDDEN) return;
         mode = Mode.HIDDEN;
         long t = now();
-        if (mainIn != null) mainOut = mainIn.toOutgoing(t, 0);
+        if (mainIn != null) mainOut = mainIn.toOutgoing(t, toLeft ? -1 : 0);
         mainIn = null;
         if (bubbleIn != null) bubbleOut = bubbleIn.toOutgoing(t, 0);
         bubbleIn = null;
         float end = restWidth();
-        width.animateTo(end, 0.36f, 1f);
-        split.animateTo(0f, 0.3f, 1f);
-        offsetX.animateTo(0f, 0.3f, 1f);
-        removeCallbacks(settleHiddenHeight);
-        postDelayed(settleHiddenHeight, 90);
+        width.animateTo(end, 0.3f, 0.9f);
+        height.animateTo(Math.min(end, pillH), 0.3f, 0.9f);
+        split.animateTo(0f, 0.3f, 0.9f);
+        if (toLeft) offsetX.impulse(-dp(200));
         if (holeD <= 0) visibility.animateTo(0f, 0.22f, 1f);
         scheduleFrame();
         if (wasExpanded) host.onExpandedChanged(false);
