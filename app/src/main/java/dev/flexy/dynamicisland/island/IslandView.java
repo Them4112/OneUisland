@@ -852,11 +852,13 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         host.onWindowHeightNeeded(compactWindowHeight());
     }
 
-    private final Runnable settleHiddenHeight = () -> {
+    private final Runnable settleHiddenHeight = this::settleHiddenHeightNow;
+
+    private void settleHiddenHeightNow() {
         if (mode != Mode.HIDDEN) return;
         height.animateTo(Math.min(restWidth(), pillH), 0.4f, 1f);
         scheduleFrame();
-    };
+    }
 
     private void goHidden(boolean toLeft) {
         removeCallbacks(fadePillBlob);
