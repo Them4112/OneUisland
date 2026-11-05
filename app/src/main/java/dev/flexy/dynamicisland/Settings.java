@@ -21,8 +21,6 @@ public final class Settings {
     public static final String ALERT_BATTERY = "alert_battery";
     public static final boolean DEF_ALERT_BATTERY = true;
 
-    public static final String ALERT_CHARGING = "alert_charging";
-    public static final boolean DEF_ALERT_CHARGING = true;
     public static final String ALERT_HOTSPOT = "alert_hotspot";
     public static final boolean DEF_ALERT_HOTSPOT = true;
     public static final String ALERT_CONNECT = "alert_connect";

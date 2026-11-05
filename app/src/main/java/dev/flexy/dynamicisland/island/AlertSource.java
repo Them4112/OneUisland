@@ -245,7 +245,7 @@ final class AlertSource {
                     int scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100);
                     int plugType = i.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0);
                     if (level < 0 || scale <= 0) return;
-                    onBatteryLevel(Math.round(level * 100f / scale), plugType != 0, plugType);
+                    onBatteryLevel(Math.round(level * 100f / scale), plugType != 0);
                 }
             }, new IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED);
         } catch (Throwable t) {
@@ -271,23 +271,10 @@ final class AlertSource {
     }
 
     private static final int CHARGE_GREEN = 0xFF30D158;
-    private boolean wasPlugged;
 
-    private void onBatteryLevel(int level, boolean plugged, int plugType) {
+    private void onBatteryLevel(int level, boolean plugged) {
         int before = batteryLevel;
         batteryLevel = level;
-        boolean justPlugged = plugged && !wasPlugged;
-        wasPlugged = plugged;
-        if (before >= 0 && plugged && level >= 100 && before < 100 && IslandSettings.alertCharging()) {
-            IslandItem full = chargingItem(level, plugType);
-            full.title = "Fully charged";
-            show(full, BATTERY_SHOW_MS);
-            return;
-        }
-        if (before >= 0 && justPlugged && IslandSettings.alertCharging()) {
-            show(chargingItem(level, plugType), BATTERY_SHOW_MS);
-            return;
-        }
         if (before < 0 || plugged || !IslandSettings.alertBattery()) return;
         for (int threshold : LOW_LEVELS) {
             if (before > threshold && level <= threshold) {
@@ -295,31 +282,6 @@ final class AlertSource {
                 return;
             }
         }
-    }
-
-    IslandItem chargingItem(int level, int plugType) {
-        IslandItem it = new IslandItem("alert:charging");
-        it.alert = true;
-        it.kind = IslandItem.Kind.CHARGING;
-        it.packageName = ctx.getPackageName();
-        Drawable d = statusBarBattery(level, CHARGE_GREEN);
-        if (d != null) {
-            it.icon = new Fit(d, 1f);
-            Drawable big = statusBarBattery(level, CHARGE_GREEN);
-            it.cardImage = big == null ? null : new Fit(big, 0.72f);
-            it.iconIsImage = true;
-            it.cardImageIsImage = true;
-        }
-        it.iconColor = true;
-        it.iconRight = true;
-        it.accent = CHARGE_GREEN;
-        it.trailing = IslandItem.Trailing.TEXT;
-        it.trailingText = level + "%";
-        it.trailingColor = CHARGE_GREEN;
-        boolean wireless = plugType == android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS;
-        it.title = wireless ? "Wireless charging" : "Charging";
-        it.postTime = Long.MAX_VALUE;
-        return it;
     }
 
     private boolean powerSaving() {

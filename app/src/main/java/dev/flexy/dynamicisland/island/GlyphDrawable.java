@@ -64,8 +64,8 @@ final class GlyphDrawable extends Drawable {
         p.setAlpha(alpha);
         float lift = ease(x / 0.4f);
         float sw = Math.max(0f, Math.min(1f, (x - 0.3f) / 0.7f));
-        float back = sw - 1f;
-        float swing = 1f + 2.2f * back * back * back + 1.2f * back * back;
+        float turn = sw * sw * (3f - 2f * sw);
+        float sx = (float) Math.cos(Math.PI * turn);
         float bw = w * 0.56f, bh = w * 0.40f;
         float bodyTop = cy - bh * 0.15f;
         p.setStyle(Paint.Style.FILL);
@@ -76,8 +76,8 @@ final class GlyphDrawable extends Drawable {
         float sr = bw * 0.30f;
         float lx = cx - sr;
         int save = c.save();
-        c.translate(0, -lift * w * 0.08f);
-        c.rotate(-58f * swing, lx, bodyTop);
+        c.translate(0, -lift * w * 0.045f);
+        c.scale(sx, 1f, lx, 0f);
         path.rewind();
         path.moveTo(lx, bodyTop);
         path.lineTo(lx, bodyTop - sr);

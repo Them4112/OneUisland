@@ -29,10 +29,6 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_BATTERY, Settings.DEF_ALERT_BATTERY);
     }
 
-    static boolean alertCharging() {
-        return values.getBoolean(Settings.ALERT_CHARGING, Settings.DEF_ALERT_CHARGING);
-    }
-
     static boolean alertHotspot() {
         return values.getBoolean(Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
     }

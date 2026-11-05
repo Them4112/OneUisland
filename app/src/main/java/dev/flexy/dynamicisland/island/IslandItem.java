@@ -83,6 +83,7 @@ public final class IslandItem {
     public boolean progressStyle;
     public boolean pulsingDot;
     public boolean animatedIcon;
+    public boolean ringOnly;
     public Drawable leftImage;
     public Drawable rightImage;
     public int pillColor;

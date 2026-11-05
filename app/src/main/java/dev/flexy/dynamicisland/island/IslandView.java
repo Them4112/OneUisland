@@ -852,6 +852,12 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         host.onWindowHeightNeeded(compactWindowHeight());
     }
 
+    private final Runnable settleHiddenHeight = () -> {
+        if (mode != Mode.HIDDEN) return;
+        height.animateTo(Math.min(restWidth(), pillH), 0.4f, 1f);
+        scheduleFrame();
+    };
+
     private void goHidden(boolean toLeft) {
         removeCallbacks(fadePillBlob);
         pillBlob.animateTo(1f, 0.1f, 1f);
@@ -859,15 +865,16 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         if (mode == Mode.HIDDEN) return;
         mode = Mode.HIDDEN;
         long t = now();
-        if (mainIn != null) mainOut = mainIn.toOutgoing(t, toLeft ? -1 : 0);
+        if (mainIn != null) mainOut = mainIn.toOutgoing(t, 0);
         mainIn = null;
         if (bubbleIn != null) bubbleOut = bubbleIn.toOutgoing(t, 0);
         bubbleIn = null;
         float end = restWidth();
-        width.animateTo(end, 0.3f, 0.9f);
-        height.animateTo(Math.min(end, pillH), 0.3f, 0.9f);
-        split.animateTo(0f, 0.3f, 0.9f);
-        if (toLeft) offsetX.impulse(-dp(200));
+        width.animateTo(end, 0.3f, 1f);
+        split.animateTo(0f, 0.3f, 1f);
+        offsetX.animateTo(0f, 0.3f, 1f);
+        removeCallbacks(settleHiddenHeight);
+        postDelayed(settleHiddenHeight, 240);
         if (holeD <= 0) visibility.animateTo(0f, 0.22f, 1f);
         scheduleFrame();
         if (wasExpanded) host.onExpandedChanged(false);
@@ -2404,7 +2411,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         }
 
         String detailText() {
-            if (item.isMedia || item.recorder || item.hasTeams()) return null;
+            if (item.isMedia || item.recorder || item.hasTeams() || item.ringOnly) return null;
             if (item.progress >= 0) return String.valueOf(Math.round(clamp01(item.progress) * 100f));
             long ms;
             if (item.pausedMs >= 0) {
