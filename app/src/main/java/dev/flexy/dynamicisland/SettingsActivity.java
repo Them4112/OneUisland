@@ -57,6 +57,11 @@ public final class SettingsActivity extends Activity {
         scroll.addView(root);
         setContentView(scroll);
 
+        if (SCREEN_PRIORITY.equals(getIntent().getStringExtra(EXTRA_SCREEN))) {
+            buildPriority(root);
+            refresh();
+            return;
+        }
         if (SCREEN_POSITION.equals(getIntent().getStringExtra(EXTRA_SCREEN))) {
             buildPosition(root);
             refresh();
@@ -72,6 +77,8 @@ public final class SettingsActivity extends Activity {
                 Settings.DEF_MAX_CHARS, v -> v >= Settings.NO_MAX_CHARS ? "No limit" : v + " chars", Settings.PREVIEW_LENGTH);
         link(island, "Island position", this::positionSummary, () ->
                 startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SCREEN, SCREEN_POSITION)));
+        link(island, "Priority order", () -> "", () ->
+                startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SCREEN, SCREEN_PRIORITY)));
         toggle(island, "White outline", Settings.OUTLINE, Settings.DEF_OUTLINE);
         toggle(island, "Detailed second capsule", Settings.DETAILED_BUBBLE, Settings.DEF_DETAILED_BUBBLE);
 
@@ -91,6 +98,8 @@ public final class SettingsActivity extends Activity {
         toggle(alerts, "Hotspot on / off", Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
         toggle(alerts, "Wi-Fi / Bluetooth connected", Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
         toggle(alerts, "Phone unlocked", Settings.ALERT_UNLOCK, Settings.DEF_ALERT_UNLOCK);
+        toggle(alerts, "Download progress", Settings.ALERT_DOWNLOAD, Settings.DEF_ALERT_DOWNLOAD);
+        toggle(alerts, "Ride apps (Uber / Bolt / FreeNow)", Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
         toggle(alerts, "Contactless payment (NFC)", Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
 
         Button reset = new Button(this);
@@ -116,6 +125,66 @@ public final class SettingsActivity extends Activity {
 
     private static final String EXTRA_SCREEN = "screen";
     private static final String SCREEN_POSITION = "position";
+    private static final String SCREEN_PRIORITY = "priority";
+    private static final String[] KINDS = {"CALL", "NAVIGATION", "RECORDING", "TIMER", "LIVE", "MEDIA", "CHARGING"};
+    private static final String[] KIND_NAMES = {"Calls", "Navigation", "Screen recording", "Timers",
+            "Live activities (Hevy, rides, downloads)", "Media", "Charging"};
+
+    private List<String> order() {
+        List<String> out = new ArrayList<>();
+        for (String k : prefs.getString(Settings.PRIORITY_ORDER, Settings.DEF_PRIORITY_ORDER).split(",")) {
+            if (java.util.Arrays.asList(KINDS).contains(k) && !out.contains(k)) out.add(k);
+        }
+        for (String k : KINDS) if (!out.contains(k)) out.add(k);
+        return out;
+    }
+
+    private void buildPriority(LinearLayout root) {
+        TextView title = label("Priority order", 30, text, true);
+        title.setPadding(dp(8), dp(28), 0, dp(8));
+        root.addView(title);
+        TextView hint = label("The top item wins the island when several are active.", 14, secondary, false);
+        hint.setPadding(dp(8), 0, 0, dp(16));
+        root.addView(hint);
+        LinearLayout list = group(root, "Highest first");
+        refreshers.add(() -> {
+            list.removeAllViews();
+            List<String> o = order();
+            for (int i = 0; i < o.size(); i++) {
+                final int idx = i;
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(0, dp(6), 0, dp(6));
+                String name = KIND_NAMES[java.util.Arrays.asList(KINDS).indexOf(o.get(i))];
+                row.addView(label((i + 1) + ".  " + name, 16, text, false),
+                        new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                row.addView(moveButton("\u25B2", idx > 0, () -> move(idx, idx - 1)));
+                row.addView(moveButton("\u25BC", idx < o.size() - 1, () -> move(idx, idx + 1)));
+                list.addView(row);
+            }
+        });
+    }
+
+    private Button moveButton(String glyph, boolean enabled, Runnable run) {
+        Button b = new Button(this);
+        b.setText(glyph);
+        b.setAllCaps(false);
+        b.setEnabled(enabled);
+        b.setTextColor(enabled ? 0xFF0A84FF : secondary);
+        b.setBackground(null);
+        b.setMinWidth(dp(48));
+        b.setOnClickListener(v -> run.run());
+        return b;
+    }
+
+    private void move(int from, int to) {
+        List<String> o = order();
+        String k = o.remove(from);
+        o.add(to, k);
+        prefs.edit().putString(Settings.PRIORITY_ORDER, android.text.TextUtils.join(",", o)).apply();
+        refresh();
+    }
     private static final String[] POSITIONS = {"Center", "Left", "Front camera"};
 
     private interface Text {

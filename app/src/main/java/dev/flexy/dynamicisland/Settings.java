@@ -27,6 +27,12 @@ public final class Settings {
     public static final boolean DEF_ALERT_CONNECT = true;
     public static final String ALERT_UNLOCK = "alert_unlock";
     public static final boolean DEF_ALERT_UNLOCK = true;
+    public static final String ALERT_RIDE = "alert_ride";
+    public static final boolean DEF_ALERT_RIDE = true;
+    public static final String ALERT_DOWNLOAD = "alert_download";
+    public static final boolean DEF_ALERT_DOWNLOAD = true;
+    public static final String PRIORITY_ORDER = "priority_order";
+    public static final String DEF_PRIORITY_ORDER = "CALL,NAVIGATION,RECORDING,TIMER,LIVE,MEDIA,CHARGING";
     public static final String OUTLINE = "outline";
     public static final boolean DEF_OUTLINE = true;
     public static final String ALERT_NFC_PAY = "alert_nfc_pay";

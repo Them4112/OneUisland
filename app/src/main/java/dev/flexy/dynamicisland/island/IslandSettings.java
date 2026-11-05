@@ -37,6 +37,27 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
     }
 
+    static boolean alertDownload() {
+        return values.getBoolean(Settings.ALERT_DOWNLOAD, Settings.DEF_ALERT_DOWNLOAD);
+    }
+
+    private static String orderCache;
+    private static java.util.List<String> orderList = java.util.Collections.emptyList();
+
+    static int priorityOf(IslandItem.Kind kind) {
+        String s = values.getString(Settings.PRIORITY_ORDER, Settings.DEF_PRIORITY_ORDER);
+        if (!s.equals(orderCache)) {
+            orderList = java.util.Arrays.asList(s.split(","));
+            orderCache = s;
+        }
+        int i = orderList.indexOf(kind.name());
+        return i < 0 ? kind.priority : 100 - i * 10;
+    }
+
+    static boolean alertRide() {
+        return values.getBoolean(Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
+    }
+
     static boolean outline() {
         return values.getBoolean(Settings.OUTLINE, Settings.DEF_OUTLINE);
     }

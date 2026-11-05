@@ -23,6 +23,7 @@ public final class SettingsProvider extends ContentProvider {
             Object v = e.getValue();
             if (v instanceof Integer) out.putInt(e.getKey(), (Integer) v);
             else if (v instanceof Boolean) out.putBoolean(e.getKey(), (Boolean) v);
+            else if (v instanceof String) out.putString(e.getKey(), (String) v);
         }
         return out;
     }

@@ -182,7 +182,7 @@ public final class IslandItem {
     }
 
     public int priority() {
-        return kind.priority;
+        return IslandSettings.priorityOf(kind);
     }
 
     public long currentMediaPosition(long nowElapsed) {

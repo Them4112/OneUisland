@@ -560,7 +560,10 @@ final class AlertSource {
         return v >= 0 && v <= 100 ? v : -1;
     }
 
+    java.util.function.Consumer<List<StatusBarNotification>> notificationSink;
+
     void onNotifications(List<StatusBarNotification> all) {
+        if (notificationSink != null) notificationSink.accept(all);
         Pods now = null;
         for (StatusBarNotification sbn : all) {
             if (!LIBREPODS.equals(sbn.getPackageName()) || sbn.getId() != LIBREPODS_ID) continue;
