@@ -326,6 +326,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         barState = state;
         if (unlocking && lockShown && state == 0 && !dozing) {
             lockShown = false;
+            if (view != null) view.setSleepFold(false);
             alerts.onUnlocked();
             requestRefresh();
         } else if (unlocking) {
