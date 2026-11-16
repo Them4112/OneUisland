@@ -37,6 +37,12 @@ public final class Settings {
     public static final boolean DEF_OUTLINE = true;
     public static final String ALERT_NFC_PAY = "alert_nfc_pay";
     public static final boolean DEF_ALERT_NFC_PAY = true;
+    public static final String ALERT_OTP = "alert_otp";
+    public static final boolean DEF_ALERT_OTP = true;
+    public static final String ALERT_PRIVACY = "alert_privacy";
+    public static final boolean DEF_ALERT_PRIVACY = true;
+    public static final String PRIVACY_LOCATION = "privacy_location";
+    public static final boolean DEF_PRIVACY_LOCATION = false;
 
     public static final boolean DEF_ALERT_PODS = true;
     public static final boolean DEF_PODS_EVERY_UNLOCK = true;

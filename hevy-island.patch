@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..f3efede
 --- /dev/null
 +++ b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
-@@ -0,0 +1,385 @@
+@@ -0,0 +1,390 @@
 +package dev.flexy.dynamicisland.island;
 +
 +import android.app.Notification;
@@ -329,6 +329,10 @@ index 0000000..f3efede
 +            cachedTitle = key;
 +        }
 +        it.cardIcon = cachedLarge;
++        if (title != null && title.length() > 0) {
++            String name = title.toString().trim();
++            it.bubbleLabel = name.length() > 18 ? name.substring(0, 17).trim() + "\u2026" : name;
++        }
 +
 +        long now = System.currentTimeMillis();
 +        if (restEnd > now) {
@@ -370,7 +374,8 @@ index 0000000..f3efede
 +        if (!m.find()) {
 +            return text;
 +        }
-+        String out = "Set " + m.group(1) + "/" + m.group(2);
++        String out = (text.toString().toLowerCase(java.util.Locale.ROOT).contains("next") ? "Next: " : "")
++                + "Set " + m.group(1) + "/" + m.group(2);
 +        Matcher d = DETAIL.matcher(text);
 +        if (d.find()) {
 +            out += "  \u00b7  " + d.group(1);

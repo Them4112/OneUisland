@@ -40,7 +40,12 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
     private final NfcPaySource nfcPay;
     private final RideSource ride;
     private final DownloadSource downloads;
+    /** Aplikacje, których powiadomienia nigdy nie trafiają na wyspę (BeReal rozjeżdża układ). */
+    private static final Set<String> IGNORED_PACKAGES = new HashSet<>(java.util.Arrays.asList(
+            "AlexisBarreyat.BeReal", "com.bereal.ft"));
     private final HotspotSource hotspot;
+    private final OtpSource otp;
+    private final PrivacySource privacy;
     final CastSource cast;
     final ExitAnimationBridge exit;
     final AlertSource alerts;
@@ -166,6 +171,8 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         ride = new RideSource(ctx, this::requestRefresh);
         downloads = new DownloadSource(ctx, this::requestRefresh);
         hotspot = new HotspotSource(ctx, main, () -> main.post(this::requestRefresh));
+        otp = new OtpSource(ctx, this::requestRefresh);
+        privacy = new PrivacySource(ctx, main, this::requestRefresh);
         cast = new CastSource(ctx);
         exit = new ExitAnimationBridge(cl);
         alerts = new AlertSource(ctx, this::requestRefresh);
@@ -240,7 +247,9 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         alerts.notificationSink = all -> {
             ride.onNotifications(all);
             downloads.onNotifications(all);
+            otp.onNotifications(all);
         };
+        privacy.start();
         nfcPay.start();
         hotspot.start();
         VoiceLevels.get().register(ctx, () -> main.post(this::requestRefresh));
@@ -396,6 +405,9 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             ride.collect(items, oa.foregroundPackage());
             downloads.collect(items, oa.foregroundPackage());
             hotspot.collect(items);
+            privacy.collect(items, oa.foregroundPackage());
+            otp.collect(items);
+            items.removeIf(i -> i.packageName != null && IGNORED_PACKAGES.contains(i.packageName));
         } catch (Throwable t) {
             XLog.e("collect failed", t);
         }

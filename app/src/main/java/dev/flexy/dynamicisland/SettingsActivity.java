@@ -101,6 +101,10 @@ public final class SettingsActivity extends Activity {
         toggle(alerts, "Download progress", Settings.ALERT_DOWNLOAD, Settings.DEF_ALERT_DOWNLOAD);
         toggle(alerts, "Ride apps (Uber / Bolt / FreeNow)", Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
         toggle(alerts, "Contactless payment (NFC)", Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
+        toggle(alerts, "Verification codes (SMS / bank) with Copy", Settings.ALERT_OTP, Settings.DEF_ALERT_OTP);
+        toggle(alerts, "Camera / microphone in use (background apps)", Settings.ALERT_PRIVACY, Settings.DEF_ALERT_PRIVACY);
+        Switch privLoc = toggle(alerts, "Also location in use", Settings.PRIVACY_LOCATION, Settings.DEF_PRIVACY_LOCATION);
+        refreshers.add(() -> privLoc.setEnabled(prefs.getBoolean(Settings.ALERT_PRIVACY, Settings.DEF_ALERT_PRIVACY)));
 
         Button reset = new Button(this);
         reset.setText("Reset to defaults");

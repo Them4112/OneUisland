@@ -14,6 +14,10 @@ final class GlyphDrawable extends Drawable {
     static final int HOTSPOT = 1;
     static final int WIFI = 2;
     static final int BLUETOOTH = 3;
+    static final int CAMERA = 4;
+    static final int MIC = 5;
+    static final int LOCATION = 6;
+    static final int KEY = 7;
 
     private final int type;
     private boolean pulse;
@@ -53,6 +57,10 @@ final class GlyphDrawable extends Drawable {
         if (type == UNLOCK) drawUnlock(c);
         else if (type == WIFI) drawWifi(c);
         else if (type == BLUETOOTH) drawBluetooth(c);
+        else if (type == CAMERA) drawCamera(c);
+        else if (type == MIC) drawMic(c);
+        else if (type == LOCATION) drawLocation(c);
+        else if (type == KEY) drawKey(c);
         else drawHotspot(c);
     }
 
@@ -159,6 +167,83 @@ final class GlyphDrawable extends Drawable {
             c.drawArc(r, -45, 90, false, p);
             c.drawArc(r, 135, 90, false, p);
         }
+    }
+
+    /** Puls 0..1 (sinus) dla trybu pulse, inaczej 1. */
+    private float breath() {
+        if (!pulse) return 1f;
+        float ph = (SystemClock.uptimeMillis() % 1600) / 1600f;
+        return 0.65f + 0.35f * (float) (0.5 + 0.5 * Math.sin(ph * Math.PI * 2));
+    }
+
+    private void drawCamera(Canvas c) {
+        float w = getBounds().width();
+        float cx = getBounds().exactCenterX();
+        float cy = getBounds().exactCenterY();
+        p.setAlpha(Math.round(alpha * breath()));
+        p.setStyle(Paint.Style.FILL);
+        r.set(cx - w * 0.42f, cy - w * 0.26f, cx + w * 0.42f, cy + w * 0.30f);
+        c.drawRoundRect(r, w * 0.10f, w * 0.10f, p);
+        r.set(cx - w * 0.16f, cy - w * 0.38f, cx + w * 0.16f, cy - w * 0.20f);
+        c.drawRoundRect(r, w * 0.05f, w * 0.05f, p);
+        p.setColor(0xFF000000);
+        p.setAlpha(Math.round(alpha * 0.85f));
+        c.drawCircle(cx, cy + w * 0.03f, w * 0.17f, p);
+        p.setColor(tint);
+        p.setAlpha(Math.round(alpha * breath()));
+        c.drawCircle(cx, cy + w * 0.03f, w * 0.09f, p);
+    }
+
+    private void drawMic(Canvas c) {
+        float w = getBounds().width();
+        float cx = getBounds().exactCenterX();
+        float cy = getBounds().exactCenterY();
+        p.setAlpha(Math.round(alpha * breath()));
+        p.setStyle(Paint.Style.FILL);
+        r.set(cx - w * 0.16f, cy - w * 0.46f, cx + w * 0.16f, cy + w * 0.12f);
+        c.drawRoundRect(r, w * 0.16f, w * 0.16f, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(w * 0.085f);
+        r.set(cx - w * 0.30f, cy - w * 0.24f, cx + w * 0.30f, cy + w * 0.27f);
+        c.drawArc(r, 0f, 180f, false, p);
+        c.drawLine(cx, cy + w * 0.27f, cx, cy + w * 0.42f, p);
+        c.drawLine(cx - w * 0.15f, cy + w * 0.44f, cx + w * 0.15f, cy + w * 0.44f, p);
+    }
+
+    private void drawLocation(Canvas c) {
+        float w = getBounds().width();
+        float cx = getBounds().exactCenterX();
+        float cy = getBounds().exactCenterY();
+        p.setAlpha(Math.round(alpha * breath()));
+        p.setStyle(Paint.Style.FILL);
+        float rad = w * 0.30f;
+        float top = cy - w * 0.42f;
+        path.rewind();
+        r.set(cx - rad, top, cx + rad, top + rad * 2f);
+        path.arcTo(r, 150f, 240f);
+        path.lineTo(cx, cy + w * 0.46f);
+        path.close();
+        c.drawPath(path, p);
+        p.setColor(0xFF000000);
+        p.setAlpha(Math.round(alpha * 0.85f));
+        c.drawCircle(cx, top + rad, rad * 0.42f, p);
+        p.setColor(tint);
+    }
+
+    private void drawKey(Canvas c) {
+        float w = getBounds().width();
+        float cx = getBounds().exactCenterX();
+        float cy = getBounds().exactCenterY();
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(w * 0.09f);
+        float hr = w * 0.17f;
+        float hx = cx - w * 0.22f;
+        c.drawCircle(hx, cy, hr, p);
+        float sx = hx + hr;
+        float ex = cx + w * 0.44f;
+        c.drawLine(sx, cy, ex, cy, p);
+        c.drawLine(ex, cy, ex, cy + w * 0.18f, p);
+        c.drawLine(ex - w * 0.16f, cy, ex - w * 0.16f, cy + w * 0.13f, p);
     }
 
     @Override

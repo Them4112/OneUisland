@@ -84,6 +84,7 @@ public final class IslandItem {
     public boolean pulsingDot;
     public boolean animatedIcon;
     public boolean ringOnly;
+    public String bubbleLabel;
     public Drawable leftImage;
     public Drawable rightImage;
     public int pillColor;

@@ -44,7 +44,7 @@ final class DownloadSource {
         try {
             Bundle e = best.getNotification().extras;
             String sig = best.getKey() + '|' + e.getCharSequence(Notification.EXTRA_TITLE) + '|'
-                    + e.getInt(Notification.EXTRA_PROGRESS) + '|' + count;
+                    + Math.round(fraction(best.getNotification()) * 100f) + '|' + count;
             if (current == null || !sig.equals(lastSig)) {
                 current = build(best, count);
                 lastSig = sig;
@@ -73,10 +73,19 @@ final class DownloadSource {
         if (Notification.CATEGORY_TRANSPORT.equals(n.category) || Notification.CATEGORY_CALL.equals(n.category)
                 || Notification.CATEGORY_NAVIGATION.equals(n.category)
                 || n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)) return false;
+        return fraction(n) >= 0f;
+    }
+
+    /** Postęp 0..1 z pól progress albo z tekstu ("73%", "12 MB / 40 MB"); -1, gdy go nie ma. */
+    private static float fraction(Notification n) {
         Bundle e = n.extras;
-        return !e.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false)
-                && e.getInt(Notification.EXTRA_PROGRESS_MAX, 0) > 0
-                && e.getInt(Notification.EXTRA_PROGRESS, -1) >= 0;
+        int max = e.getInt(Notification.EXTRA_PROGRESS_MAX, 0);
+        int progress = e.getInt(Notification.EXTRA_PROGRESS, -1);
+        if (!e.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) && max > 0 && progress >= 0) {
+            return Math.max(0f, Math.min(1f, progress / (float) max));
+        }
+        int percent = TextProgress.detect(TextProgress.joined(n));
+        return percent < 0 ? -1f : percent / 100f;
     }
 
     private IslandItem build(StatusBarNotification sbn, int count) {
@@ -101,9 +110,8 @@ final class DownloadSource {
         if (count > 1) sub = (sub.isEmpty() ? "" : sub + "  ·  ") + "+" + (count - 1) + " more";
         it.subtitle = sub;
 
-        float p = e.getInt(Notification.EXTRA_PROGRESS) / (float) e.getInt(Notification.EXTRA_PROGRESS_MAX);
         it.trailing = IslandItem.Trailing.PROGRESS_RING;
-        it.progress = Math.max(0f, Math.min(1f, p));
+        it.progress = Math.max(0f, fraction(n));
         it.detail = Math.round(it.progress * 100f) + "%";
 
         it.icon = loadIcon(n.getSmallIcon());

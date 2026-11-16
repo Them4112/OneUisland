@@ -2424,6 +2424,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         }
 
         String detailText() {
+            if (item.bubbleLabel != null) return item.bubbleLabel;
             if (item.isMedia || item.recorder || item.hasTeams() || item.ringOnly) return null;
             if (item.progress >= 0) return String.valueOf(Math.round(clamp01(item.progress) * 100f));
             long ms;

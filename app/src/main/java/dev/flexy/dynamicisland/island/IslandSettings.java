@@ -70,6 +70,18 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_NFC_PAY, Settings.DEF_ALERT_NFC_PAY);
     }
 
+    static boolean alertOtp() {
+        return values.getBoolean(Settings.ALERT_OTP, Settings.DEF_ALERT_OTP);
+    }
+
+    static boolean alertPrivacy() {
+        return values.getBoolean(Settings.ALERT_PRIVACY, Settings.DEF_ALERT_PRIVACY);
+    }
+
+    static boolean privacyLocation() {
+        return values.getBoolean(Settings.PRIVACY_LOCATION, Settings.DEF_PRIVACY_LOCATION);
+    }
+
     static boolean alertPods() {
         return values.getBoolean(Settings.ALERT_PODS, Settings.DEF_ALERT_PODS);
     }

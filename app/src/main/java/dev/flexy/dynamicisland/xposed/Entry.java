@@ -16,6 +16,7 @@ public final class Entry implements IXposedHookLoadPackage {
                 && "com.android.systemui".equals(lpparam.processName)
                 && !systemUiInstalled) {
             systemUiInstalled = true;
+            if (!CrashGuard.enter(lpparam.appInfo)) return;
             try {
                 SystemUiHooks.install(lpparam.classLoader);
             } catch (Throwable t) {

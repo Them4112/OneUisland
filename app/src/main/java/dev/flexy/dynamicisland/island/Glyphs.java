@@ -16,6 +16,8 @@ final class Glyphs {
     static final int MIC_OFF = 8;
     static final int HANGUP = 9;
     static final int SPEAKER = 10;
+    static final int COPY = 11;
+    static final int CHECK = 12;
 
     private static final Path PATH = new Path();
     private static final RectF R = new RectF();
@@ -141,6 +143,34 @@ final class Glyphs {
                 c.drawArc(R, -50f, 100f, false, paint);
                 R.set(wx - s * 0.40f, cy - s * 0.40f, wx + s * 0.40f, cy + s * 0.40f);
                 c.drawArc(R, -50f, 100f, false, paint);
+                paint.setStrokeCap(Paint.Cap.BUTT);
+                break;
+            }
+            case COPY: {
+                float s = size;
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(s * 0.09f);
+                paint.setStrokeJoin(Paint.Join.ROUND);
+                R.set(cx - s * 0.10f, cy - s * 0.10f, cx + s * 0.40f, cy + s * 0.40f);
+                c.drawRoundRect(R, s * 0.08f, s * 0.08f, paint);
+                p.moveTo(cx - s * 0.22f, cy + s * 0.14f);
+                p.lineTo(cx - s * 0.40f, cy + s * 0.14f);
+                p.lineTo(cx - s * 0.40f, cy - s * 0.40f);
+                p.lineTo(cx + s * 0.14f, cy - s * 0.40f);
+                p.lineTo(cx + s * 0.14f, cy - s * 0.22f);
+                c.drawPath(p, paint);
+                break;
+            }
+            case CHECK: {
+                float s = size;
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(s * 0.12f);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setStrokeJoin(Paint.Join.ROUND);
+                p.moveTo(cx - s * 0.36f, cy + s * 0.02f);
+                p.lineTo(cx - s * 0.10f, cy + s * 0.28f);
+                p.lineTo(cx + s * 0.38f, cy - s * 0.26f);
+                c.drawPath(p, paint);
                 paint.setStrokeCap(Paint.Cap.BUTT);
                 break;
             }
