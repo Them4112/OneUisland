@@ -140,28 +140,65 @@ public final class NowBarMirror {
         nm.createNotificationChannel(ch);
     }
 
+    private static final class Btn {
+        final String title;
+        final PendingIntent intent;
+
+        Btn(String title, PendingIntent intent) {
+            this.title = title;
+            this.intent = intent;
+        }
+    }
+
+    private PendingIntent broadcast(int slotId, Runnable r) {
+        runnables.put(slotId, r);
+        Intent in = new Intent(ACTION).setPackage(ctx.getPackageName()).putExtra("slot", slotId);
+        return PendingIntent.getBroadcast(ctx, slotId, in, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private List<Btn> buttons(int id, IslandItem it) {
+        List<Btn> out = new ArrayList<>();
+        int base = id * 8;
+        if (it.torch) {
+            if (it.torchSet != null && it.torchMax > 1) {
+                final int down = Math.max(1, it.torchLevel - 1);
+                final int up = Math.min(it.torchMax, it.torchLevel + 1);
+                out.add(new Btn("\u2212", broadcast(base + 1, () -> it.torchSet.accept(down))));
+                out.add(new Btn("+", broadcast(base + 2, () -> it.torchSet.accept(up))));
+            }
+            if (it.torchToggle != null) out.add(new Btn("Turn off", broadcast(base, it.torchToggle)));
+            return out;
+        }
+        for (int i = 0; i < it.actions.size() && out.size() < 3; i++) {
+            IslandItem.Action a = it.actions.get(i);
+            if (a.title == null) continue;
+            PendingIntent pi = a.intent;
+            if (pi == null && a.runnable != null) pi = broadcast(base + i, a.runnable);
+            if (pi != null) out.add(new Btn(a.title.toString(), pi));
+        }
+        return out;
+    }
+
     private Notification build(String slot, int id, IslandItem it) {
         boolean torch = it.torch;
         String title = torch ? "Flashlight" : str(it.title, it.appName);
-        String primary = title;
-        String secondary;
+        String sub = torch ? null : str(it.subtitle, null);
+        String detail;
         if (torch) {
-            secondary = it.torchMax > 1 ? "On  ·  Level " + it.torchLevel + "/" + it.torchMax : "On";
+            detail = it.torchMax > 1 ? "On  \u00b7  Level " + it.torchLevel + "/" + it.torchMax : "On";
         } else {
-            String sub = str(it.subtitle, null);
-            String detail = str(it.detail, null);
-            if (detail != null && sub != null) secondary = detail + "  ·  " + sub;
-            else secondary = detail != null ? detail : sub != null ? sub : str(it.appName, "");
+            detail = str(it.detail, null);
         }
+        String secondary = detail != null && sub != null ? detail + "  \u00b7  " + sub : detail != null ? detail : sub != null ? sub : str(it.appName, "");
         Icon small = torch ? torchIcon() : toIcon(it.icon, !it.iconIsImage);
         if (small == null) small = Icon.createWithResource(ctx, android.R.drawable.stat_notify_sync);
-        Icon large = toIcon(it.cardIcon != null ? it.cardIcon : it.cardImage != null ? it.cardImage : it.icon, false);
-        if (large == null) large = small;
+        Icon large = torch ? null : toIcon(it.cardIcon != null ? it.cardIcon : it.cardImage != null ? it.cardImage : it.icon, false);
         int accent = it.accent == 0 ? 0xFFFFFFFF : it.accent;
+        int percent = torch || it.progress < 0 ? -1 : Math.round(Math.max(0f, Math.min(1f, it.progress)) * 100f);
+        List<Btn> buttons = buttons(id, it);
 
         Notification.Builder b = new Notification.Builder(ctx, CHANNEL)
                 .setSmallIcon(small)
-                .setLargeIcon(large)
                 .setContentTitle(title)
                 .setContentText(secondary)
                 .setOngoing(true)
@@ -170,31 +207,13 @@ public final class NowBarMirror {
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setColor(accent)
-                .setColorized(false);
+                .setColorized(false)
+                .setCustomBigContentView(card(title, sub, detail, percent, large, buttons, accent, false))
+                .setStyle(new Notification.DecoratedCustomViewStyle());
+        if (large != null) b.setLargeIcon(large);
         if (it.contentIntent != null) b.setContentIntent(it.contentIntent);
-        if (!torch && it.progress >= 0) b.setProgress(100, Math.round(Math.max(0f, Math.min(1f, it.progress)) * 100f), false);
-
-        List<IslandItem.Action> actions = new ArrayList<>();
-        if (torch) {
-            if (it.torchToggle != null) actions.add(new IslandItem.Action("Turn off", null, null, it.torchToggle, true));
-        } else {
-            actions.addAll(it.actions);
-        }
-        int slotBase = id * 8;
-        for (int i = 0; i < actions.size() && i < 3; i++) {
-            IslandItem.Action a = actions.get(i);
-            PendingIntent pi = a.intent;
-            if (pi == null && a.runnable != null) {
-                int slotId = slotBase + i;
-                runnables.put(slotId, a.runnable);
-                Intent in = new Intent(ACTION).setPackage(ctx.getPackageName()).putExtra("slot", slotId);
-                pi = PendingIntent.getBroadcast(ctx, slotId, in, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            }
-            if (pi == null || a.title == null) continue;
-            Icon ai = toIcon(a.icon, true);
-            if (ai == null) ai = small;
-            b.addAction(new Notification.Action.Builder(ai, a.title, pi).build());
-        }
+        if (percent >= 0) b.setProgress(100, percent, false);
+        for (Btn btn : buttons) b.addAction(new Notification.Action.Builder(small, btn.title, btn.intent).build());
 
         try {
             Notification.Builder.class.getMethod("setRequestPromotedOngoing", boolean.class).invoke(b, true);
@@ -203,17 +222,20 @@ public final class NowBarMirror {
         Bundle extras = new Bundle();
         extras.putString("android.substName", str(it.appName, title));
         extras.putInt(OA + "style", 1);
-        extras.putCharSequence(OA + "primaryInfo", primary);
+        extras.putCharSequence(OA + "primaryInfo", title);
         extras.putCharSequence(OA + "secondaryInfo", secondary);
-        extras.putCharSequence(OA + "chipExpandedText", torch ? "Flashlight" : primary);
-        extras.putCharSequence(OA + "nowbarPrimaryInfo", primary);
+        extras.putCharSequence(OA + "chipExpandedText", title);
+        extras.putCharSequence(OA + "nowbarPrimaryInfo", title);
         extras.putCharSequence(OA + "nowbarSecondaryInfo", secondary);
         extras.putInt(OA + "chipBgColor", 0xFF000000);
         extras.putBoolean("android.showSmallIcon", true);
         extras.putParcelable(OA + "chipIcon", small);
-        extras.putParcelable(OA + "nowbarIcon", large);
+        extras.putParcelable(OA + "nowbarIcon", large != null ? large : small);
         extras.putParcelable(OA + "firstIcon", small);
         extras.putParcelable(OA + "secondaryInfoIcon", small);
+        android.widget.RemoteViews nowBarCard = card(title, sub, detail, percent, large, buttons, accent, true);
+        extras.putParcelable(OA + "nowbarExpandRemoteView", nowBarCard);
+        extras.putParcelable(OA + "expandedRemoteView", nowBarCard);
         b.addExtras(extras);
         Notification n = b.build();
         try {
@@ -223,6 +245,61 @@ public final class NowBarMirror {
         } catch (Throwable ignored) {
         }
         return n;
+    }
+
+    /** Rozwinięta karta: tytuł, drugi wiersz, odliczanie, pasek, obrazek, do 3 przycisków. nowBar = biały tekst na ciemnym. */
+    private android.widget.RemoteViews card(String title, String sub, String detail, int percent, Icon image,
+                                            List<Btn> buttons, int accent, boolean nowBar) {
+        android.widget.RemoteViews rv = new android.widget.RemoteViews("dev.flexy.dynamicisland", dev.flexy.dynamicisland.R.layout.mirror_expanded);
+        int primary = nowBar ? 0xFFFFFFFF : 0;
+        int secondaryColor = nowBar ? 0xB3FFFFFF : 0;
+        if (nowBar) {
+            int pad = Math.round(20 * ctx.getResources().getDisplayMetrics().density);
+            rv.setViewPadding(dev.flexy.dynamicisland.R.id.mirror_root, pad, pad, pad, pad);
+        }
+        rv.setTextViewText(dev.flexy.dynamicisland.R.id.mirror_title, title == null ? "" : title);
+        if (primary != 0) rv.setTextColor(dev.flexy.dynamicisland.R.id.mirror_title, primary);
+        if (sub != null) {
+            rv.setTextViewText(dev.flexy.dynamicisland.R.id.mirror_text, sub);
+            if (secondaryColor != 0) rv.setTextColor(dev.flexy.dynamicisland.R.id.mirror_text, secondaryColor);
+        } else {
+            rv.setViewVisibility(dev.flexy.dynamicisland.R.id.mirror_text, android.view.View.GONE);
+        }
+        if (detail != null) {
+            rv.setTextViewText(dev.flexy.dynamicisland.R.id.mirror_detail, detail);
+            rv.setTextColor(dev.flexy.dynamicisland.R.id.mirror_detail, nowBar ? 0xFFFFFFFF : accent);
+        } else {
+            rv.setViewVisibility(dev.flexy.dynamicisland.R.id.mirror_detail, android.view.View.GONE);
+        }
+        if (image != null) rv.setImageViewIcon(dev.flexy.dynamicisland.R.id.mirror_image, image);
+        else rv.setViewVisibility(dev.flexy.dynamicisland.R.id.mirror_image, android.view.View.GONE);
+        if (percent >= 0) {
+            rv.setProgressBar(dev.flexy.dynamicisland.R.id.mirror_progress, 100, percent, false);
+            try {
+                rv.setColorStateList(dev.flexy.dynamicisland.R.id.mirror_progress, "setProgressTintList",
+                        android.content.res.ColorStateList.valueOf(accent));
+                rv.setColorStateList(dev.flexy.dynamicisland.R.id.mirror_progress, "setProgressBackgroundTintList",
+                        android.content.res.ColorStateList.valueOf(nowBar ? 0x40FFFFFF : 0x40808080));
+            } catch (Throwable ignored) {
+            }
+        } else {
+            rv.setViewVisibility(dev.flexy.dynamicisland.R.id.mirror_progress, android.view.View.GONE);
+        }
+        int[] ids = {dev.flexy.dynamicisland.R.id.mirror_btn0, dev.flexy.dynamicisland.R.id.mirror_btn1, dev.flexy.dynamicisland.R.id.mirror_btn2};
+        if (buttons.isEmpty()) {
+            rv.setViewVisibility(dev.flexy.dynamicisland.R.id.mirror_buttons, android.view.View.GONE);
+        } else {
+            for (int i = 0; i < ids.length; i++) {
+                if (i >= buttons.size()) {
+                    rv.setViewVisibility(ids[i], android.view.View.GONE);
+                    continue;
+                }
+                rv.setTextViewText(ids[i], buttons.get(i).title);
+                if (primary != 0) rv.setTextColor(ids[i], primary);
+                rv.setOnClickPendingIntent(ids[i], buttons.get(i).intent);
+            }
+        }
+        return rv;
     }
 
     private static String str(CharSequence cs, CharSequence fallback) {
