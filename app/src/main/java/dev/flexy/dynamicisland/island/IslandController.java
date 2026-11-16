@@ -402,10 +402,10 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             torch.collect(items, view.isExpanded());
             addSavedRecording(items);
             nfcPay.collect(items);
-            ride.collect(items, oa.foregroundPackage());
-            downloads.collect(items, oa.foregroundPackage());
+            ride.collect(items, itemForeground());
+            downloads.collect(items, itemForeground());
             hotspot.collect(items);
-            privacy.collect(items, oa.foregroundPackage());
+            privacy.collect(items, itemForeground());
             otp.collect(items);
             items.removeIf(i -> i.packageName != null && IGNORED_PACKAGES.contains(i.packageName));
         } catch (Throwable t) {
@@ -484,12 +484,26 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
                     + " | " + view.debugState());
         }
         boolean lockedIcon = false;
+        List<IslandItem> lockItems = null;
         if (alert == null && lockShown) {
-            alert = alerts.lockedItem();
-            lockedIcon = true;
+            if (IslandSettings.lockScreenItems()) {
+                lockItems = new ArrayList<>();
+                for (IslandItem i : items) if (lockEligible(i)) lockItems.add(i);
+            }
+            if (lockItems == null || lockItems.isEmpty()) {
+                lockItems = null;
+                if (IslandSettings.alertUnlock()) {
+                    alert = alerts.lockedItem();
+                    lockedIcon = true;
+                } else {
+                    lockItems = Collections.emptyList();
+                }
+            }
         }
         if (IslandSettings.previewLength()) {
             view.setItems(Collections.singletonList(lengthPreview), IslandView.HINT_NONE, Collections.emptyList());
+        } else if (lockItems != null) {
+            view.setItems(lockItems, hint, Collections.emptyList());
         } else if (alert != null) {
             view.setItems(Collections.singletonList(alert), IslandView.HINT_NONE, Collections.emptyList());
             if (!lockedIcon) main.postDelayed(this::requestRefresh, Math.max(16, alerts.until() - now));
@@ -670,12 +684,23 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         return sbh * 0.53f;
     }
 
+    /** Na ekranie blokady ostatnia aktywność nie jest "na wierzchu": nie chowaj przez nią elementów. */
+    private String itemForeground() {
+        return barState == 0 ? oa.foregroundPackage() : null;
+    }
+
+    /** Co wolno pokazać na ekranie blokady: trening Hevy, przejazd, latarka, muzyka. */
+    private static boolean lockEligible(IslandItem i) {
+        return i.key.startsWith("hevy:") || i.key.startsWith("ride:") || i.torch || i.isMedia;
+    }
+
     private void updateSuppression() {
         if (view == null) return;
         boolean keyguard = barState == 1 || barState == 2;
         view.setStatusBarHidden(statusBarWindowState != 0);
         boolean folding = SystemClock.uptimeMillis() - sleepFoldAt < SLEEP_FOLD_MS;
-        boolean lockShow = barState == 1 && !dozing && !folding && !revealPending && IslandSettings.alertUnlock();
+        boolean lockShow = barState == 1 && !dozing && !folding && !revealPending
+                && (IslandSettings.alertUnlock() || IslandSettings.lockScreenItems());
         view.setSuppressed(((keyguard || keyguardStuck || dozing) && !folding && !lockShow) || revealPending);
         if (lockShow != lockShown) {
             lockShown = lockShow;

@@ -58,6 +58,10 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
     }
 
+    static boolean lockScreenItems() {
+        return values.getBoolean(Settings.LOCK_SCREEN_ITEMS, Settings.DEF_LOCK_SCREEN_ITEMS);
+    }
+
     static boolean outline() {
         return values.getBoolean(Settings.OUTLINE, Settings.DEF_OUTLINE);
     }

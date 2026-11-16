@@ -33,6 +33,8 @@ public final class Settings {
     public static final boolean DEF_ALERT_DOWNLOAD = true;
     public static final String PRIORITY_ORDER = "priority_order";
     public static final String DEF_PRIORITY_ORDER = "CALL,NAVIGATION,RECORDING,TIMER,LIVE,MEDIA,CHARGING";
+    public static final String LOCK_SCREEN_ITEMS = "lock_screen_items";
+    public static final boolean DEF_LOCK_SCREEN_ITEMS = true;
     public static final String OUTLINE = "outline";
     public static final boolean DEF_OUTLINE = true;
     public static final String ALERT_NFC_PAY = "alert_nfc_pay";

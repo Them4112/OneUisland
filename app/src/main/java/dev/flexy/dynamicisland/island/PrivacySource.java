@@ -57,7 +57,7 @@ final class PrivacySource {
     private final Context ctx;
     private final Handler main;
     private final Runnable onChange;
-    private final Runnable tick = () -> onChange.run();
+    private final Runnable tick = this::refresh;
     private final Map<String, Use> uses = new HashMap<>();
     private final Map<String, String> labels = new HashMap<>();
     private IslandItem cached;
@@ -67,6 +67,10 @@ final class PrivacySource {
         this.ctx = ctx;
         this.main = main;
         this.onChange = onChange;
+    }
+
+    private void refresh() {
+        onChange.run();
     }
 
     void start() {

@@ -434,7 +434,7 @@ index d73abfa..f74d5fa 100644
              media.collect(items, oa.foregroundPackage(), hidden, packages);
              cast.collect(items);
              AssistantApp.collectAll(items, ctx);
-+            hevy.collect(items, oa.foregroundPackage());
++            hevy.collect(items, itemForeground());
              if (torch.available()) items.removeIf(FlashlightSource::isSystemTorchItem);
              torch.collect(items, view.isExpanded());
              addSavedRecording(items);

@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class CrashGuard {
     /** Podbij razem z wersją: nowy build dostaje czystą szansę. */
-    static final String BUILD = "v29";
+    static final String BUILD = "v30";
 
     private static final long STABLE_AFTER_MS = 45_000;
     private static final int MAX_UNSTABLE_STARTS = 3;
