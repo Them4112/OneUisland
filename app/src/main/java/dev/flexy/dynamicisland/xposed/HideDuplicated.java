@@ -193,6 +193,8 @@ public final class HideDuplicated {
     private static boolean hide(Object entry) {
         StatusBarNotification sbn = sbn(entry);
         if (sbn == null || LIVEBRIDGE_PKG.equals(sbn.getPackageName())) return false;
+        // oryginał Hevy/przejazdu znika z panelu, gdy jego lustro siedzi w Now Barze (jedna karta, jak przy muzyce)
+        if (dev.flexy.dynamicisland.island.NowBarMirror.hidesSource(sbn.getKey())) return true;
         if (isSummary(sbn.getNotification())
                 && sbn.getNotification().extras.containsKey("android.ongoingActivityNoti.style")) return true;
         boolean hide = COPIES.contains(sbn.getKey());
@@ -221,7 +223,7 @@ public final class HideDuplicated {
         return sub;
     }
 
-    private static void rebuild() {
+    public static void rebuild() {
         Object f = filter == null ? null : filter.get();
         if (f != null) Refl.call(f, "invalidateList", "duplicate copy gone");
     }

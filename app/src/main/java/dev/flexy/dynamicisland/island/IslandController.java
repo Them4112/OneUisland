@@ -45,6 +45,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             "AlexisBarreyat.BeReal", "com.bereal.ft"));
     private final HotspotSource hotspot;
     private final OtpSource otp;
+    private final NowBarMirror mirror;
     private final PrivacySource privacy;
     final CastSource cast;
     final ExitAnimationBridge exit;
@@ -172,6 +173,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         downloads = new DownloadSource(ctx, this::requestRefresh);
         hotspot = new HotspotSource(ctx, main, () -> main.post(this::requestRefresh));
         otp = new OtpSource(ctx, this::requestRefresh);
+        mirror = new NowBarMirror(ctx);
         privacy = new PrivacySource(ctx, main, this::requestRefresh);
         cast = new CastSource(ctx);
         exit = new ExitAnimationBridge(cl);
@@ -250,6 +252,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             otp.onNotifications(all);
         };
         privacy.start();
+        mirror.register();
         nfcPay.start();
         hotspot.start();
         VoiceLevels.get().register(ctx, () -> main.post(this::requestRefresh));
@@ -408,6 +411,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             privacy.collect(items, itemForeground());
             otp.collect(items);
             items.removeIf(i -> i.packageName != null && IGNORED_PACKAGES.contains(i.packageName));
+            mirror.sync(hevy.current(), ride.current(), torch.available() && torch.isOn() ? torch.item() : null);
         } catch (Throwable t) {
             XLog.e("collect failed", t);
         }

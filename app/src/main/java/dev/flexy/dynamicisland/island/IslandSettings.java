@@ -58,6 +58,10 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
     }
 
+    static boolean nowBarMirror() {
+        return values.getBoolean(Settings.NOW_BAR_MIRROR, Settings.DEF_NOW_BAR_MIRROR);
+    }
+
     static boolean lockScreenItems() {
         return values.getBoolean(Settings.LOCK_SCREEN_ITEMS, Settings.DEF_LOCK_SCREEN_ITEMS);
     }

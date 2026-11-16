@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..f3efede
 --- /dev/null
 +++ b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
-@@ -0,0 +1,390 @@
+@@ -0,0 +1,395 @@
 +package dev.flexy.dynamicisland.island;
 +
 +import android.app.Notification;
@@ -97,6 +97,10 @@ index 0000000..f3efede
 +        } catch (Throwable t) {
 +            XLog.e("hevy update failed", t);
 +        }
++    }
++
++    IslandItem current() {
++        return current;
 +    }
 +
 +    void collect(List<IslandItem> out, String foregroundPackage) {
@@ -303,6 +307,7 @@ index 0000000..f3efede
 +        it.kind = IslandItem.Kind.LIVE; // zmien na TIMER, jesli ma wygrywac z muzyka
 +        it.postTime = sbn.getPostTime();
 +        it.contentIntent = n.contentIntent;
++        it.sourceKey = sbn.getKey();
 +        it.appName = "Hevy";
 +
 +        CharSequence title = e.getCharSequence("android.title");

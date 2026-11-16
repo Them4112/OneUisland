@@ -119,6 +119,7 @@ final class OaSource {
             StatusBarNotification sbn = entry == null ? null : (StatusBarNotification) Refl.get(entry, "mSbn");
             Notification n = sbn == null ? null : sbn.getNotification();
             if (key == null || pkg == null) return order;
+            if (key.contains(NowBarMirror.TAG)) return order;
             if (n != null && (n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return order;
             if (style(n) >= 2 || Refl.getInt(d, "mStyle", 0) >= 2) return order;
             boolean isCall = n != null && isCallStyle(n);

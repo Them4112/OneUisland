@@ -68,6 +68,7 @@ final class DownloadSource {
         if ((n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return false;
         if ((n.flags & (Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE)) == 0) return false;
         String pkg = sbn.getPackageName();
+        if (sbn.getTag() != null && sbn.getTag().startsWith(NowBarMirror.TAG)) return false;
         if ("com.hevy".equals(pkg) || "com.ubercab".equals(pkg) || "ee.mtakso.client".equals(pkg)
                 || "taxi.android.client".equals(pkg)) return false;
         if (Notification.CATEGORY_TRANSPORT.equals(n.category) || Notification.CATEGORY_CALL.equals(n.category)

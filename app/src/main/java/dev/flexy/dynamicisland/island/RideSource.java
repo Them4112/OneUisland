@@ -79,6 +79,10 @@ final class RideSource {
         }
     }
 
+    IslandItem current() {
+        return current;
+    }
+
     void collect(List<IslandItem> out, String foregroundPackage) {
         if (current == null || current.packageName.equals(foregroundPackage)) return;
         for (IslandItem it : out) {
@@ -118,6 +122,7 @@ final class RideSource {
         it.kind = IslandItem.Kind.LIVE;
         it.postTime = sbn.getPostTime();
         it.contentIntent = n.contentIntent;
+        it.sourceKey = sbn.getKey();
         it.appName = app.name;
         it.accent = app.color;
 

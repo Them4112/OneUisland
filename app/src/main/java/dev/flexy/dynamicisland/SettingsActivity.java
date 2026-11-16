@@ -81,6 +81,7 @@ public final class SettingsActivity extends Activity {
                 startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SCREEN, SCREEN_PRIORITY)));
         toggle(island, "White outline", Settings.OUTLINE, Settings.DEF_OUTLINE);
         toggle(island, "Show on lock screen (Hevy, rides, flashlight, media)", Settings.LOCK_SCREEN_ITEMS, Settings.DEF_LOCK_SCREEN_ITEMS);
+        toggle(island, "Samsung Now Bar pill (Hevy, rides, flashlight)", Settings.NOW_BAR_MIRROR, Settings.DEF_NOW_BAR_MIRROR);
         toggle(island, "Detailed second capsule", Settings.DETAILED_BUBBLE, Settings.DEF_DETAILED_BUBBLE);
 
         gap(root);
