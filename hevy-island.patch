@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..f3efede
 --- /dev/null
 +++ b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
-@@ -0,0 +1,395 @@
+@@ -0,0 +1,392 @@
 +package dev.flexy.dynamicisland.island;
 +
 +import android.app.Notification;
@@ -107,12 +107,8 @@ index 0000000..f3efede
 +        if (current == null || HEVY_PACKAGE.equals(foregroundPackage)) {
 +            return; // Hevy na pierwszym planie: wyspa niepotrzebna
 +        }
-+        // Jesli Hevy jest juz pokazany przez OaSource (promoted ongoing), nie dubluj.
-+        for (IslandItem it : out) {
-+            if (HEVY_PACKAGE.equals(it.packageName)) {
-+                return;
-+            }
-+        }
++        // OaSource mogl juz dodac Hevy jako promoted ongoing (tytul = "Hevy"): nasz element ma nazwe cwiczenia i przerwe.
++        out.removeIf(it -> HEVY_PACKAGE.equals(it.packageName));
 +        out.add(current);
 +    }
 +
@@ -350,7 +346,8 @@ index 0000000..f3efede
 +            Matcher m = SET.matcher(text);
 +            if (m.find()) {
 +                it.trailing = IslandItem.Trailing.TEXT;
-+                it.trailingText = m.group(1) + "/" + m.group(2);
++                String name = title == null ? "" : title.toString().replaceAll("\\s*\\(.*?\\)", "").trim();
++                it.trailingText = (name.isEmpty() ? "" : name + "  \u00b7  ") + m.group(1) + "/" + m.group(2);
 +            }
 +        }
 +

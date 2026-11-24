@@ -23,8 +23,6 @@ public final class Settings {
 
     public static final String ALERT_HOTSPOT = "alert_hotspot";
     public static final boolean DEF_ALERT_HOTSPOT = true;
-    public static final String ALERT_CONNECT = "alert_connect";
-    public static final boolean DEF_ALERT_CONNECT = true;
     public static final String ALERT_UNLOCK = "alert_unlock";
     public static final boolean DEF_ALERT_UNLOCK = true;
     public static final String ALERT_RIDE = "alert_ride";

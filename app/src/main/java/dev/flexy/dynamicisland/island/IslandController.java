@@ -138,6 +138,8 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
     private final List<String> minimized = new ArrayList<>();
     private Set<String> lastPackages = new LinkedHashSet<>();
     private String pinnedKey;
+    /** Kolejność ustawiona ręcznie przeciąganiem kart: pierwszy = główna kapsuła, drugi = bańka. */
+    private final List<String> manualOrder = new ArrayList<>();
     private final List<String> ring = new ArrayList<>();
     private List<String> visibleOrder = new ArrayList<>();
     private int pendingHint = IslandView.HINT_NONE;
@@ -464,6 +466,14 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
             return Long.compare(b.postTime, a.postTime);
         });
 
+        if (!manualOrder.isEmpty()) {
+            Collections.sort(items, (a, b) -> {
+                int ia = manualOrder.indexOf(a.key), ib = manualOrder.indexOf(b.key);
+                if (ia < 0) ia = Integer.MAX_VALUE;
+                if (ib < 0) ib = Integer.MAX_VALUE;
+                return Integer.compare(ia, ib);
+            });
+        }
         applyCycle(items);
         boolean wasVisible = !visibleKeys.isEmpty();
         Set<String> keys = new HashSet<>();
@@ -797,6 +807,17 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         int current = ring.indexOf(visibleOrder.get(0));
         pinnedKey = ring.get(Math.floorMod(current + direction, n));
         pendingHint = direction > 0 ? IslandView.HINT_MINIMIZE : IslandView.HINT_RESTORE;
+        requestRefresh();
+    }
+
+    @Override
+    public void onReorder(List<String> keys) {
+        manualOrder.removeAll(keys);
+        manualOrder.addAll(0, keys);
+        while (manualOrder.size() > 24) manualOrder.remove(manualOrder.size() - 1);
+        pinnedKey = null;
+        ring.clear();
+        boost.clear();
         requestRefresh();
     }
 

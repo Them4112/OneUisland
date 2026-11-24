@@ -41,7 +41,6 @@ final class AlertSource {
     void start() {
         startBluetooth();
         startBattery();
-        startConnections();
         dndOn = dndOn();
         ringerMode = ringerMode();
         try {
@@ -132,74 +131,6 @@ final class AlertSource {
         it.animatedIcon = true;
         it.noExpand = true;
         it.title = "";
-        it.postTime = Long.MAX_VALUE;
-        return it;
-    }
-
-    private String lastSsid;
-
-    private void startConnections() {
-        try {
-            ctx.registerReceiver(new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context c, Intent i) {
-                    try {
-                        android.net.NetworkInfo ni = i.getParcelableExtra(android.net.wifi.WifiManager.EXTRA_NETWORK_INFO,
-                                android.net.NetworkInfo.class);
-                        if (ni == null) return;
-                        if (!ni.isConnected()) {
-                            if (ni.getState() == android.net.NetworkInfo.State.DISCONNECTED) lastSsid = null;
-                            return;
-                        }
-                        android.net.wifi.WifiManager wm = ctx.getSystemService(android.net.wifi.WifiManager.class);
-                        String ssid = wm.getConnectionInfo().getSSID();
-                        if (ssid == null || ssid.contains("unknown ssid")) return;
-                        if (ssid.length() > 1 && ssid.startsWith("\"") && ssid.endsWith("\""))
-                            ssid = ssid.substring(1, ssid.length() - 1);
-                        if (ssid.equals(lastSsid)) return;
-                        lastSsid = ssid;
-                        if (IslandSettings.alertConnect()) show(connectItem("alert:wifi", GlyphDrawable.WIFI, ssid, 0xFF0A84FF), 2500);
-                    } catch (Throwable t) {
-                        XLog.e("wifi connect alert failed", t);
-                    }
-                }
-            }, new IntentFilter(android.net.wifi.WifiManager.NETWORK_STATE_CHANGED_ACTION), Context.RECEIVER_EXPORTED);
-            ctx.registerReceiver(new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context c, Intent i) {
-                    try {
-                        android.bluetooth.BluetoothDevice d = i.getParcelableExtra(android.bluetooth.BluetoothDevice.EXTRA_DEVICE,
-                                android.bluetooth.BluetoothDevice.class);
-                        if (d == null) return;
-                        android.bluetooth.BluetoothClass bc = d.getBluetoothClass();
-                        if (bc != null && bc.getMajorDeviceClass() == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO) return;
-                        String name = d.getName();
-                        if (name == null || name.isEmpty()) return;
-                        if (IslandSettings.alertConnect()) show(connectItem("alert:bluetooth", GlyphDrawable.BLUETOOTH, name, 0xFF0A84FF), 2500);
-                    } catch (Throwable t) {
-                        XLog.e("bluetooth connect alert failed", t);
-                    }
-                }
-            }, new IntentFilter(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED), Context.RECEIVER_EXPORTED);
-        } catch (Throwable t) {
-            XLog.e("connection receivers failed", t);
-        }
-    }
-
-    private IslandItem connectItem(String key, int glyph, String name, int color) {
-        IslandItem it = new IslandItem(key);
-        it.alert = true;
-        it.kind = IslandItem.Kind.LIVE;
-        it.packageName = ctx.getPackageName();
-        it.icon = new GlyphDrawable(glyph, false);
-        it.iconColor = true;
-        it.iconTint = color;
-        it.accent = color;
-        it.animatedIcon = true;
-        it.title = name;
-        it.trailing = IslandItem.Trailing.TEXT;
-        it.trailingText = "Connected";
-        it.trailingColor = color;
         it.postTime = Long.MAX_VALUE;
         return it;
     }
@@ -651,9 +582,9 @@ final class AlertSource {
     private static boolean isAudio(android.bluetooth.BluetoothDevice d) {
         try {
             android.bluetooth.BluetoothClass c = d.getBluetoothClass();
-            return c == null || c.getMajorDeviceClass() == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO;
+            return c != null && c.getMajorDeviceClass() == android.bluetooth.BluetoothClass.Device.Major.AUDIO_VIDEO;
         } catch (Throwable t) {
-            return true;
+            return false;
         }
     }
 
@@ -680,6 +611,7 @@ final class AlertSource {
                     android.bluetooth.BluetoothDevice d = i.getParcelableExtra(android.bluetooth.BluetoothDevice.EXTRA_DEVICE,
                             android.bluetooth.BluetoothDevice.class);
                     if (d == null || i.getAction() == null || !isAudio(d)) return;
+                    if (!IslandSettings.alertPods()) return;
                     if (i.getAction().endsWith("CONNECTION_STATE_CHANGED")) {
                         int state = i.getIntExtra(android.bluetooth.BluetoothProfile.EXTRA_STATE, -1);
                         if (state == android.bluetooth.BluetoothProfile.STATE_DISCONNECTED) {
@@ -704,6 +636,7 @@ final class AlertSource {
 
     private void readHeadset(android.bluetooth.BluetoothDevice d) {
         try {
+            if (!IslandSettings.alertPods()) return;
             if (LIBREPODS.equals(metaString(d, META_COMPANION_APP))) return;
             Pods p = new Pods();
             p.bluetooth = true;

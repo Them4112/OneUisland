@@ -33,10 +33,6 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
     }
 
-    static boolean alertConnect() {
-        return values.getBoolean(Settings.ALERT_CONNECT, Settings.DEF_ALERT_CONNECT);
-    }
-
     static boolean alertDownload() {
         return values.getBoolean(Settings.ALERT_DOWNLOAD, Settings.DEF_ALERT_DOWNLOAD);
     }

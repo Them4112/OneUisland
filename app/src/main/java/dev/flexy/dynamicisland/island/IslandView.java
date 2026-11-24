@@ -48,6 +48,8 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
 
         void onCycle(int direction);
 
+        void onReorder(java.util.List<String> keys);
+
         void onShadeDragStart(float downX, float downY, long downTime);
 
         void onShadeDragEvent(MotionEvent e);
@@ -199,6 +201,42 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
     private final Spring stackDy = new Spring(0f, 0.45f, 0.55f).setValueThreshold(0.3f);
     private boolean stackDragging;
     private int dragAxis;
+    private boolean reordering;
+    private float reorderDownCy;
+
+    private int liveCards() {
+        int n = 0;
+        for (Card c : cards) if (!c.leaving) n++;
+        return n;
+    }
+
+    /** Przeciągana karta ustawia kolejność: gdy jej środek minie środek sąsiada, zamieniają się miejscami. */
+    private void reorderPass() {
+        List<Card> live = new ArrayList<>();
+        for (Card c : cards) if (!c.leaving) live.add(c);
+        live.sort((a, b) -> Float.compare(a == downCard ? a.cy.value() : a.targetCy, b == downCard ? b.cy.value() : b.targetCy));
+        boolean changed = false;
+        for (int i = 0; i < live.size(); i++) changed |= live.get(i).order != i;
+        if (!changed) return;
+        float y = stackTop();
+        for (int i = 0; i < live.size(); i++) {
+            Card c = live.get(i);
+            c.order = i;
+            c.targetCy = y + c.body.h / 2f;
+            y += c.body.h + cardGap;
+            if (c != downCard) c.cy.animateTo(c.targetCy, 0.40f, 0.80f);
+        }
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+    }
+
+    private List<String> cardOrder() {
+        List<Card> live = new ArrayList<>();
+        for (Card c : cards) if (!c.leaving) live.add(c);
+        live.sort((a, b) -> Integer.compare(a.order, b.order));
+        List<String> keys = new ArrayList<>();
+        for (Card c : live) keys.add(c.item.key);
+        return keys;
+    }
 
     private static float rubber(float d, float limit) {
         float a = Math.abs(d);
@@ -237,6 +275,19 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         return left;
     }
     private final Runnable secondTick = this::onSecondTick;
+    private static final long LONG_PRESS_MS = 1500;
+    private boolean longPressFired;
+    private final Runnable longPress = () -> {
+        if (mode != Mode.COMPACT || dragging || !(downOnMain || downOnBubble)) return;
+        IslandItem target = downOnBubble && secondary != null ? secondary : primary;
+        if (target == null || target.noExpand) return;
+        longPressFired = true;
+        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        press.animateTo(1f, 0.35f, 0.6f);
+        computeMain(mainRect);
+        host.onOpenItem(target, new RectF(mainRect));
+        scheduleFrame();
+    };
     private boolean tickPosted;
 
     public IslandView(Context context, Host host) {
@@ -4907,6 +4958,9 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                     downOnBubble = bubbleRect.contains(downX, downY);
                 }
                 if (!downOnMain && !downOnBubble) return false;
+                longPressFired = false;
+                removeCallbacks(longPress);
+                postDelayed(longPress, LONG_PRESS_MS);
                 press.animateTo(0.94f, 0.2f, 0.9f);
                 scheduleFrame();
                 return true;
@@ -4930,6 +4984,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                 float dy = e.getY() - downY;
                 if (!dragging && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
                     dragging = true;
+                    removeCallbacks(longPress);
                     releaseButton();
                     press.animateTo(1f, 0.35f, 0.6f);
                 }
@@ -4945,8 +5000,22 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                             }
                         }
                     } else {
-                        stackDy.snapTo(rubber(dy, dp(dy > 0 ? 90 : 60)));
-                        stackDx.snapTo(rubber(dx, dp(24)));
+                        int live = liveCards();
+                        boolean edge = (downCard.order == 0 && dy < 0) || (downCard.order == live - 1 && dy > 0);
+                        if (reordering || (live > 1 && !edge)) {
+                            if (!reordering) {
+                                reordering = true;
+                                reorderDownCy = downCard.cy.value();
+                                stackDy.snapTo(0f);
+                                stackDx.snapTo(0f);
+                                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                            }
+                            downCard.cy.snapTo(reorderDownCy + dy);
+                            reorderPass();
+                        } else {
+                            stackDy.snapTo(rubber(dy, dp(dy > 0 ? 90 : 60)));
+                            stackDx.snapTo(rubber(dx, dp(24)));
+                        }
                     }
                     scheduleFrame();
                     invalidate();
@@ -4992,15 +5061,30 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                     endTorchDrag();
                     return true;
                 }
+                removeCallbacks(longPress);
                 releaseButton();
                 press.animateTo(1f, 0.35f, 0.6f);
                 if (offsetX.value() != 0f) offsetX.animateTo(0f, 0.4f, 0.55f);
                 scheduleFrame();
+                if (longPressFired) {
+                    longPressFired = false;
+                    return true;
+                }
                 float dx = e.getX() - downX;
                 float dy = e.getY() - downY;
                 boolean horizontal = Math.abs(dx) > dp(26) && Math.abs(dx) > Math.abs(dy) * 1.2f;
                 if (downOnHole) {
                     if (horizontal && dx > 0 || !dragging) host.onRestore();
+                    return true;
+                }
+                if (dragging && reordering) {
+                    reordering = false;
+                    stackDragging = false;
+                    dragAxis = 0;
+                    if (downCard != null) downCard.cy.animateTo(downCard.targetCy, 0.46f, 0.74f);
+                    performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+                    host.onReorder(cardOrder());
+                    scheduleFrame();
                     return true;
                 }
                 if (dragging) {
@@ -5011,6 +5095,9 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                             host.onMinimize(target);
                         } else if (host.hasMinimized()) {
                             host.onRestore();
+                        } else if (primary != null && primary.isMedia && primary.mediaNext != null && !downOnBubble) {
+                            primary.mediaNext.run();
+                            pulse.impulse(1.2f);
                         } else {
                             host.onCycle(-1);
                         }
@@ -5027,6 +5114,12 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                 return true;
             }
             case MotionEvent.ACTION_CANCEL:
+                removeCallbacks(longPress);
+                longPressFired = false;
+                if (reordering) {
+                    reordering = false;
+                    if (downCard != null) downCard.cy.animateTo(downCard.targetCy, 0.46f, 0.74f);
+                }
                 if (forwardingShade) {
                     forwardingShade = false;
                     host.onShadeDragEvent(e);
