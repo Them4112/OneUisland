@@ -277,7 +277,9 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
     private final Runnable secondTick = this::onSecondTick;
     private static final long LONG_PRESS_MS = 1500;
     private boolean longPressFired;
-    private final Runnable longPress = () -> {
+    private final Runnable longPress = this::onLongPress;
+
+    private void onLongPress() {
         if (mode != Mode.COMPACT || dragging || !(downOnMain || downOnBubble)) return;
         IslandItem target = downOnBubble && secondary != null ? secondary : primary;
         if (target == null || target.noExpand) return;
@@ -287,7 +289,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         computeMain(mainRect);
         host.onOpenItem(target, new RectF(mainRect));
         scheduleFrame();
-    };
+    }
     private boolean tickPosted;
 
     public IslandView(Context context, Host host) {
