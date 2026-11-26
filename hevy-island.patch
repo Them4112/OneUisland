@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..f3efede
 --- /dev/null
 +++ b/app/src/main/java/dev/flexy/dynamicisland/island/HevySource.java
-@@ -0,0 +1,392 @@
+@@ -0,0 +1,400 @@
 +package dev.flexy.dynamicisland.island;
 +
 +import android.app.Notification;
@@ -81,6 +81,7 @@ index 0000000..f3efede
 +            }
 +        }
 +        if (found == null) {
++            if (current != null) XLog.i("hevy: notification gone");
 +            reset();
 +            return;
 +        }
@@ -91,6 +92,11 @@ index 0000000..f3efede
 +            if (current == null || !sig.equals(lastSig)) {
 +                current = build(found);
 +                lastSig = sig;
++                Bundle dbg = found.getNotification().extras;
++                XLog.i("hevy: key=" + found.getKey() + " flags=0x" + Integer.toHexString(found.getNotification().flags)
++                        + " title=" + dbg.getCharSequence("android.title") + " text=" + dbg.getCharSequence("android.text")
++                        + " sub=" + dbg.getCharSequence("android.subText") + " restEnd=" + restEnd
++                        + " actions=" + (found.getNotification().actions == null ? 0 : found.getNotification().actions.length));
 +                onChanged.run();
 +            }
 +            scheduleTick();
@@ -108,7 +114,9 @@ index 0000000..f3efede
 +            return; // Hevy na pierwszym planie: wyspa niepotrzebna
 +        }
 +        // OaSource mogl juz dodac Hevy jako promoted ongoing (tytul = "Hevy"): nasz element ma nazwe cwiczenia i przerwe.
-+        out.removeIf(it -> HEVY_PACKAGE.equals(it.packageName));
++        int before = out.size();
++        out.removeIf(it -> HEVY_PACKAGE.equals(it.packageName) || it.key.contains("|" + HEVY_PACKAGE + "|"));
++        if (out.size() != before) XLog.i("hevy: replaced " + (before - out.size()) + " system item(s) with own card");
 +        out.add(current);
 +    }
 +

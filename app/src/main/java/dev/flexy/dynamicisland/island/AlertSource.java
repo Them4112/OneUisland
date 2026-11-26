@@ -201,6 +201,7 @@ final class AlertSource {
                     int plugType = i.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0);
                     if (level < 0 || scale <= 0) return;
                     onBatteryLevel(Math.round(level * 100f / scale), plugType != 0);
+                    onPlugged(plugType, i, Math.round(level * 100f / scale));
                 }
             }, new IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED);
         } catch (Throwable t) {
@@ -226,6 +227,76 @@ final class AlertSource {
     }
 
     private static final int CHARGE_GREEN = 0xFF30D158;
+    private static final long CHARGE_SHOW_MS = 4000;
+    private int lastPlugType = -1;
+    private int chargePercent;
+    private final Runnable wattTick = this::refreshWatts;
+    private int wattPolls;
+
+    /** Podłączenie ładowarki: zielona bateria, "Charging · 25 W" i procent; moc doczytywana przez 2,5 s, bo negocjacja trwa. */
+    private void onPlugged(int plugType, Intent i, int percent) {
+        boolean was = lastPlugType > 0;
+        boolean now = plugType > 0;
+        lastPlugType = plugType;
+        chargePercent = percent;
+        if (!now || was || !IslandSettings.chargeWatts()) {
+            if (!now) btMain.removeCallbacks(wattTick);
+            return;
+        }
+        show(chargeItem(plugType, chargeWatts(i), percent), CHARGE_SHOW_MS);
+        wattPolls = 0;
+        btMain.removeCallbacks(wattTick);
+        btMain.postDelayed(wattTick, 500);
+    }
+
+    private void refreshWatts() {
+        if (current == null || !"alert:charge".equals(current.key)) return;
+        current = chargeItem(lastPlugType, chargeWatts(null), chargePercent);
+        onChanged.run();
+        if (++wattPolls < 5) btMain.postDelayed(wattTick, 600);
+    }
+
+    /** Moc ładowania w W: prąd z BatteryManager (µA lub mA) × napięcie z intentu (mV); -1, gdy nie da się odczytać. */
+    private int chargeWatts(Intent batteryIntent) {
+        try {
+            android.os.BatteryManager bm = ctx.getSystemService(android.os.BatteryManager.class);
+            if (bm == null) return -1;
+            int raw = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+            if (raw == Integer.MIN_VALUE || raw == 0) raw = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE);
+            if (raw == Integer.MIN_VALUE || raw == 0) return -1;
+            double amps = Math.abs(raw) >= 20000 ? Math.abs(raw) / 1_000_000.0 : Math.abs(raw) / 1000.0;
+            Intent bi = batteryIntent != null ? batteryIntent
+                    : ctx.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            int mv = bi == null ? -1 : bi.getIntExtra(android.os.BatteryManager.EXTRA_VOLTAGE, -1);
+            double volts = mv > 0 ? (mv > 1000 ? mv / 1000.0 : mv) : 4.0;
+            double watts = amps * volts;
+            if (watts < 0.8 || watts > 240) return -1;
+            return (int) Math.max(1, Math.round(watts));
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    private IslandItem chargeItem(int plugType, int watts, int percent) {
+        IslandItem it = new IslandItem("alert:charge");
+        it.alert = true;
+        it.kind = IslandItem.Kind.LIVE;
+        it.packageName = ctx.getPackageName();
+        Drawable d = statusBarBattery(percent, CHARGE_GREEN);
+        if (d != null) {
+            it.icon = new Fit(d, 1f);
+            it.iconIsImage = true;
+        }
+        it.iconColor = true;
+        it.accent = CHARGE_GREEN;
+        boolean wireless = plugType == android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS;
+        it.title = (wireless ? "Wireless charging" : "Charging") + (watts > 0 ? "  \u00b7  " + watts + " W" : "");
+        it.trailing = IslandItem.Trailing.TEXT;
+        it.trailingText = watts > 0 ? watts + " W" : percent + "%";
+        it.trailingColor = CHARGE_GREEN;
+        it.postTime = Long.MAX_VALUE;
+        return it;
+    }
 
     private void onBatteryLevel(int level, boolean plugged) {
         int before = batteryLevel;

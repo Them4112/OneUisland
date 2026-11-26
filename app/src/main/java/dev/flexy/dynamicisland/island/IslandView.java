@@ -170,6 +170,10 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
 
     private final Paint shapePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint bracketPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Spring bracketOn = new Spring(0f, 0.38f, 0.82f).setValueThreshold(0.004f);
+    private float bracketTarget = -1f;
+    private final Paint bracketGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint cardPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint cardStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -328,6 +332,13 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
 
         shapePaint.setColor(0xFF000000);
         outlinePaint.setColor(0x47FFFFFF);
+        bracketPaint.setStyle(Paint.Style.STROKE);
+        bracketPaint.setStrokeCap(Paint.Cap.ROUND);
+        bracketPaint.setStrokeWidth(dp(1.4f));
+        bracketGlowPaint.setStyle(Paint.Style.STROKE);
+        bracketGlowPaint.setStrokeCap(Paint.Cap.ROUND);
+        bracketGlowPaint.setStrokeWidth(dp(3.2f));
+        bracketGlowPaint.setMaskFilter(new BlurMaskFilter(dp(2.5f), BlurMaskFilter.Blur.NORMAL));
         cardStroke.setStyle(Paint.Style.STROKE);
         cardStroke.setStrokeWidth(outlineW);
         applyFonts();
@@ -1184,6 +1195,12 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         active |= offsetX.step(dt);
         active |= split.step(dt);
         active |= stepBubbleExtra(dt);
+        float bt = mode == Mode.COMPACT && IslandSettings.brackets() ? 1f : 0f;
+        if (bt != bracketTarget) {
+            bracketTarget = bt;
+            bracketOn.animateTo(bt, bt > 0 ? 0.42f : 0.28f, 0.8f);
+        }
+        active |= bracketOn.step(dt);
         float ot = IslandSettings.outline() ? 1f : 0f;
         if (ot != outlineTarget) {
             outlineTarget = ot;
@@ -1664,6 +1681,36 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         canvas.restoreToCount(save);
     }
 
+    /** Dwie obwódki jak w ColorOS: łuk „(” przy lewym końcu kapsuły i „)” przy prawym końcu bańki (albo kapsuły). */
+    private void drawBrackets(Canvas canvas, float r, boolean hasBubble, float br) {
+        float open = clamp01(bracketOn.value());
+        float a = pillBlob.value() * visibleAlpha() * open;
+        if (a < 0.02f) return;
+        float gap = dp(3f);
+        float sweep = 128f * (0.25f + 0.75f * open);
+        bracketPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.72f * a));
+        bracketGlowPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.28f * a));
+        float lr = r + gap;
+        float lcx = mainRect.left + r;
+        float lcy = mainRect.centerY();
+        tmpRect.set(lcx - lr, lcy - lr, lcx + lr, lcy + lr);
+        canvas.drawArc(tmpRect, 180f - sweep / 2f, sweep, false, bracketGlowPaint);
+        canvas.drawArc(tmpRect, 180f - sweep / 2f, sweep, false, bracketPaint);
+        float rr, rcx, rcy;
+        if (hasBubble) {
+            rr = br + gap;
+            rcx = bubbleRect.right - br;
+            rcy = bubbleRect.centerY();
+        } else {
+            rr = r + gap;
+            rcx = mainRect.right - r;
+            rcy = mainRect.centerY();
+        }
+        tmpRect.set(rcx - rr, rcy - rr, rcx + rr, rcy + rr);
+        canvas.drawArc(tmpRect, -sweep / 2f, sweep, false, bracketGlowPaint);
+        canvas.drawArc(tmpRect, -sweep / 2f, sweep, false, bracketPaint);
+    }
+
     private void drawPillAndBubble(Canvas canvas, long t) {
         float r = mainRect.height() / 2f;
         float s = split.value();
@@ -1713,6 +1760,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
                 }
             }
         }
+        if (pillVisible && bracketOn.value() > 0.01f) drawBrackets(canvas, r, hasBubble, br);
         int mainColor = glass ? GLASS_COLOR : bodyColor(mainIn);
         boolean frost = glass && frostOn();
         int glassSave = glass ? canvas.saveLayerAlpha(0, 0, screenW, getHeight(), Math.round(255 * (frost ? FROST_PILL : GLASS_ALPHA))) : -1;
@@ -4226,10 +4274,14 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         final float tile = dp(32);
         final StaticLayout title;
         final StaticLayout artist;
+        final java.util.List<Lyrics.Line> lyrics;
+        final float lyricTop;
         final float seekTop;
         final float controlsTop;
         final float controlH = dp(52);
         float barLeft;
+        String lastLyric;
+        long lyricChangedAt;
         float barRight;
         float playerH;
 
@@ -4273,7 +4325,15 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
             int textW = Math.max(1, Math.round(w - pad * 2 - art - dp(14) - tile - dp(10)));
             title = item.title == null ? null : layout(item.title, mediaTitlePaint(), textW, 1);
             artist = item.subtitle == null ? null : layout(item.subtitle, mediaArtistPaint(), textW, 1);
-            seekTop = pad + art + dp(16);
+            lyrics = Lyrics.get(item);
+            if (!lyrics.isEmpty()) {
+                Paint.FontMetrics lm = mediaLyricPaint().getFontMetrics();
+                lyricTop = pad + art + dp(12);
+                seekTop = lyricTop + (lm.descent - lm.ascent) + dp(12);
+            } else {
+                lyricTop = -1f;
+                seekTop = pad + art + dp(16);
+            }
             controlsTop = seekTop + dp(14) + dp(10);
             String totalText = item.mediaDuration > 0 ? formatTimePadded(item.mediaDuration) : "--:--";
             barLeft = pad + smallPaint.measureText("00:00") + dp(10);
@@ -4369,6 +4429,25 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
             float a1 = alpha * r1;
             float sy = y + seekTop + (1f - r1) * dp(8) + dp(7);
             long pos = fx.shownPosition(item, SystemClock.elapsedRealtime());
+            if (lyricTop >= 0) {
+                Lyrics.Line line = Lyrics.current(lyrics, pos);
+                String text = line == null ? null : line.text;
+                if (!java.util.Objects.equals(text, lastLyric)) {
+                    lastLyric = text;
+                    lyricChangedAt = nowT;
+                }
+                if (text != null) {
+                    TextPaint lp = mediaLyricPaint();
+                    float in = clamp01((nowT - lyricChangedAt) / 260f);
+                    float la = a1 * (0.35f + 0.65f * in);
+                    int tint = Colors.blend(fx.accent(nowT), 0xFFFFFFFF, 0.55f);
+                    lp.setColor(Colors.withAlpha(tint, la));
+                    Paint.FontMetrics lfm = lp.getFontMetrics();
+                    float ly = y + lyricTop + (1f - r1) * dp(8) - lfm.ascent + (1f - in) * dp(4);
+                    String shown = TextUtils.ellipsize(text, lp, w - pad * 2, TextUtils.TruncateAt.END).toString();
+                    c.drawText(shown, x + pad + (w - pad * 2 - lp.measureText(shown)) / 2f, ly, lp);
+                }
+            }
             String cur = formatTimePadded(Math.max(0, pos));
             String total = item.mediaDuration > 0 ? formatTimePadded(item.mediaDuration) : "--:--";
             smallPaint.setColor(Colors.withAlpha(0x99FFFFFF, a1));
@@ -4411,6 +4490,7 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
 
     private void applyFonts() {
         fontKey = Fonts.key();
+        mediaLyric = null;
         Typeface regular = Fonts.of(400);
         Typeface medium = Fonts.of(500);
         Typeface semibold = Fonts.of(600);
@@ -4440,6 +4520,17 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
             mediaTitle.setTextSize(sp(17f));
         }
         return mediaTitle;
+    }
+
+    private TextPaint mediaLyric;
+
+    private TextPaint mediaLyricPaint() {
+        if (mediaLyric == null) {
+            mediaLyric = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            mediaLyric.setTypeface(Fonts.of(600));
+            mediaLyric.setTextSize(sp(14f));
+        }
+        return mediaLyric;
     }
 
     private TextPaint mediaArtistPaint() {

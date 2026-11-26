@@ -80,6 +80,7 @@ public final class SettingsActivity extends Activity {
         link(island, "Priority order", () -> "", () ->
                 startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SCREEN, SCREEN_PRIORITY)));
         toggle(island, "White outline", Settings.OUTLINE, Settings.DEF_OUTLINE);
+        toggle(island, "ColorOS side brackets", Settings.BRACKETS, Settings.DEF_BRACKETS);
         toggle(island, "Show on lock screen (Hevy, rides, flashlight, media)", Settings.LOCK_SCREEN_ITEMS, Settings.DEF_LOCK_SCREEN_ITEMS);
         toggle(island, "Samsung Now Bar pill (Hevy, rides, flashlight)", Settings.NOW_BAR_MIRROR, Settings.DEF_NOW_BAR_MIRROR);
         toggle(island, "Detailed second capsule", Settings.DETAILED_BUBBLE, Settings.DEF_DETAILED_BUBBLE);
@@ -88,6 +89,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout cards = group(root, "Cards");
         toggle(cards, "Frosted glass design", Settings.FROSTED_CARDS, Settings.DEF_FROSTED_CARDS);
         toggle(cards, "Recent Spotify playlists", Settings.SPOTIFY_RECENTS, Settings.DEF_SPOTIFY_RECENTS);
+        toggle(cards, "Song lyrics on the music card (lrclib.net)", Settings.LYRICS, Settings.DEF_LYRICS);
 
         gap(root);
         LinearLayout alerts = group(root, "Alerts");
@@ -97,6 +99,7 @@ public final class SettingsActivity extends Activity {
         toggle(alerts, "Do Not Disturb", Settings.ALERT_DND, Settings.DEF_ALERT_DND);
         toggle(alerts, "Sound / Vibrate / Mute", Settings.ALERT_RINGER, Settings.DEF_ALERT_RINGER);
         toggle(alerts, "Low battery (20% and 10%)", Settings.ALERT_BATTERY, Settings.DEF_ALERT_BATTERY);
+        toggle(alerts, "Charger plugged in (watts + percent)", Settings.CHARGE_WATTS, Settings.DEF_CHARGE_WATTS);
         toggle(alerts, "Hotspot on / off", Settings.ALERT_HOTSPOT, Settings.DEF_ALERT_HOTSPOT);
         toggle(alerts, "Phone unlocked", Settings.ALERT_UNLOCK, Settings.DEF_ALERT_UNLOCK);
         toggle(alerts, "Download progress", Settings.ALERT_DOWNLOAD, Settings.DEF_ALERT_DOWNLOAD);

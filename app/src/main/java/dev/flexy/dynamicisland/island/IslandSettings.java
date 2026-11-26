@@ -54,12 +54,24 @@ final class IslandSettings {
         return values.getBoolean(Settings.ALERT_RIDE, Settings.DEF_ALERT_RIDE);
     }
 
+    static boolean lyrics() {
+        return values.getBoolean(Settings.LYRICS, Settings.DEF_LYRICS);
+    }
+
+    static boolean chargeWatts() {
+        return values.getBoolean(Settings.CHARGE_WATTS, Settings.DEF_CHARGE_WATTS);
+    }
+
     static boolean nowBarMirror() {
         return values.getBoolean(Settings.NOW_BAR_MIRROR, Settings.DEF_NOW_BAR_MIRROR);
     }
 
     static boolean lockScreenItems() {
         return values.getBoolean(Settings.LOCK_SCREEN_ITEMS, Settings.DEF_LOCK_SCREEN_ITEMS);
+    }
+
+    static boolean brackets() {
+        return values.getBoolean(Settings.BRACKETS, Settings.DEF_BRACKETS);
     }
 
     static boolean outline() {

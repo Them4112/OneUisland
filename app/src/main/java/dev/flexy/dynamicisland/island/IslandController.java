@@ -255,6 +255,7 @@ public final class IslandController implements IslandView.Host, IslandWindow.Lis
         };
         privacy.start();
         mirror.register();
+        Lyrics.onLoaded = this::requestRefresh;
         nfcPay.start();
         hotspot.start();
         VoiceLevels.get().register(ctx, () -> main.post(this::requestRefresh));
