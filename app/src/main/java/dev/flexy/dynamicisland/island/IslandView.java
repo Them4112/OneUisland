@@ -334,11 +334,11 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         outlinePaint.setColor(0x47FFFFFF);
         bracketPaint.setStyle(Paint.Style.STROKE);
         bracketPaint.setStrokeCap(Paint.Cap.ROUND);
-        bracketPaint.setStrokeWidth(dp(1.3f));
+        bracketPaint.setStrokeWidth(dp(1.6f));
         bracketGlowPaint.setStyle(Paint.Style.STROKE);
         bracketGlowPaint.setStrokeCap(Paint.Cap.ROUND);
-        bracketGlowPaint.setStrokeWidth(dp(5f));
-        bracketGlowPaint.setMaskFilter(new BlurMaskFilter(dp(4f), BlurMaskFilter.Blur.NORMAL));
+        bracketGlowPaint.setStrokeWidth(dp(4f));
+        bracketGlowPaint.setMaskFilter(new BlurMaskFilter(dp(3f), BlurMaskFilter.Blur.NORMAL));
         cardStroke.setStyle(Paint.Style.STROKE);
         cardStroke.setStrokeWidth(outlineW);
         applyFonts();
@@ -791,6 +791,13 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         if (split.value() > 0.2f) {
             computeBubble(out, tmpRect);
             out.union(tmpRect);
+        }
+        // łuki ColorOS wystają poza kapsułę i bańkę: ikony paska stanu mają ustąpić także im
+        float bracket = bracketOn.value();
+        if (bracket > 0.01f && mode == Mode.COMPACT) {
+            float reach = bracketGap() + dp(1.6f) / 2f + dp(3f);
+            out.left -= reach * bracket;
+            out.right += reach * bracket;
         }
         float rowTop = cy - pillH / 2f;
         float rowBottom = cy + pillH / 2f;
@@ -1682,15 +1689,19 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
     }
 
     /** Dwie obwódki jak w ColorOS: łuk „(” przy lewym końcu kapsuły i „)” przy prawym końcu bańki (albo kapsuły). */
+    private float bracketGap() {
+        return dp(7f);
+    }
+
     private void drawBrackets(Canvas canvas, float r, boolean hasBubble, float br) {
         float open = clamp01(bracketOn.value());
         float a = pillBlob.value() * visibleAlpha() * open;
         if (a < 0.02f) return;
-        float gap = dp(8f);
-        float sweep = 104f * (0.25f + 0.75f * open);
-        // mleczna, półprzezroczysta kreska z szeroką miękką poświatą: efekt szronionego szkła, nie twardej linii
-        bracketPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.38f * a));
-        bracketGlowPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.16f * a));
+        float gap = bracketGap();
+        float sweep = 78f * (0.25f + 0.75f * open);
+        // czarne, półprzezroczyste łuki z miękkim cieniem: krótkie, odsunięte od kapsuły i bańki
+        bracketPaint.setColor(Colors.withAlpha(0xFF000000, 0.42f * a));
+        bracketGlowPaint.setColor(Colors.withAlpha(0xFF000000, 0.18f * a));
         float lr = r + gap;
         float lcx = mainRect.left + r;
         float lcy = mainRect.centerY();
