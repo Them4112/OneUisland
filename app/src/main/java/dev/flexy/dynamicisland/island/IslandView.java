@@ -334,11 +334,11 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         outlinePaint.setColor(0x47FFFFFF);
         bracketPaint.setStyle(Paint.Style.STROKE);
         bracketPaint.setStrokeCap(Paint.Cap.ROUND);
-        bracketPaint.setStrokeWidth(dp(1.4f));
+        bracketPaint.setStrokeWidth(dp(1.3f));
         bracketGlowPaint.setStyle(Paint.Style.STROKE);
         bracketGlowPaint.setStrokeCap(Paint.Cap.ROUND);
-        bracketGlowPaint.setStrokeWidth(dp(3.2f));
-        bracketGlowPaint.setMaskFilter(new BlurMaskFilter(dp(2.5f), BlurMaskFilter.Blur.NORMAL));
+        bracketGlowPaint.setStrokeWidth(dp(5f));
+        bracketGlowPaint.setMaskFilter(new BlurMaskFilter(dp(4f), BlurMaskFilter.Blur.NORMAL));
         cardStroke.setStyle(Paint.Style.STROKE);
         cardStroke.setStrokeWidth(outlineW);
         applyFonts();
@@ -1686,10 +1686,11 @@ public final class IslandView extends View implements Choreographer.FrameCallbac
         float open = clamp01(bracketOn.value());
         float a = pillBlob.value() * visibleAlpha() * open;
         if (a < 0.02f) return;
-        float gap = dp(3f);
-        float sweep = 128f * (0.25f + 0.75f * open);
-        bracketPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.72f * a));
-        bracketGlowPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.28f * a));
+        float gap = dp(8f);
+        float sweep = 104f * (0.25f + 0.75f * open);
+        // mleczna, półprzezroczysta kreska z szeroką miękką poświatą: efekt szronionego szkła, nie twardej linii
+        bracketPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.38f * a));
+        bracketGlowPaint.setColor(Colors.withAlpha(0xFFFFFFFF, 0.16f * a));
         float lr = r + gap;
         float lcx = mainRect.left + r;
         float lcy = mainRect.centerY();
